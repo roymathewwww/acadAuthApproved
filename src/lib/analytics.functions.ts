@@ -44,110 +44,12 @@ async function runWithFallback<T>(
   return sqliteOp();
 }
 
-async function seedAnalyticsData(userId: string) {
-  ensureUserExistsInSqlite(userId);
-  const db = getDb();
-  const today = new Date();
-  const activeDaysOffset = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-    14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 28, 29, 30, 32, 35, 40
-  ];
-  const subjects = ["DBMS", "Operating Systems", "Computer Networks", "Software Engineering"];
-
-  const activities: any[] = [];
-
-  activeDaysOffset.forEach(offset => {
-    const actDate = new Date();
-    actDate.setDate(today.getDate() - offset);
-    const sub = subjects[offset % subjects.length];
-    const duration = 45 + (offset * 7) % 90;
-    const score = 70 + (offset * 3) % 25;
-    
-    activities.push({
-      id: crypto.randomUUID(),
-      user_id: userId,
-      activity_type: "study_session",
-      subject: sub,
-      duration_minutes: duration,
-      score,
-      details: JSON.stringify({ note: `Completed study session on ${sub}`, topic: "Exam Preparation" }),
-      created_at: new Date(actDate.setHours(10, 0, 0, 0)).toISOString(),
-    });
-  });
-
-  const milestones = [
-    { title: "Understand ER modeling basics", sub: "DBMS" },
-    { title: "Master SQL aggregate functions", sub: "DBMS" },
-    { title: "Implement basic CPU scheduling", sub: "Operating Systems" },
-    { title: "Review thread synchronization logs", sub: "Operating Systems" },
-    { title: "Define OSI model 7 layers", sub: "Computer Networks" },
-    { title: "Configure local network subnets", sub: "Computer Networks" },
-    { title: "Write SRS requirements sheet", sub: "Software Engineering" },
-    { title: "Design database schemas for ecommerce", sub: "DBMS" },
-  ];
-
-  milestones.forEach((m, idx) => {
-    const actDate = new Date();
-    actDate.setDate(today.getDate() - (idx * 2 + 1));
-    activities.push({
-      id: crypto.randomUUID(),
-      user_id: userId,
-      activity_type: "milestone",
-      subject: m.sub,
-      duration_minutes: 0,
-      score: 100,
-      details: JSON.stringify({ note: m.title }),
-      created_at: new Date(actDate.setHours(14, 0, 0, 0)).toISOString(),
-    });
-  });
-
-  const skillsList = [
-    { name: "SQL", dateOffset: 5 },
-    { name: "React", dateOffset: 12 },
-    { name: "Node.js", dateOffset: 20 },
-    { name: "C++", dateOffset: 25 },
-    { name: "Docker", dateOffset: 35 },
-  ];
-
-  skillsList.forEach(s => {
-    const d = new Date();
-    d.setDate(today.getDate() - s.dateOffset);
-    activities.push({
-      id: crypto.randomUUID(),
-      user_id: userId,
-      activity_type: "skill",
-      subject: "General",
-      duration_minutes: 0,
-      score: 100,
-      details: JSON.stringify({ skill_name: s.name }),
-      created_at: new Date(d.setHours(17, 0, 0, 0)).toISOString(),
-    });
-  });
-
-  // Seed Supabase if online
-  const supabase = getSupabaseServerClient();
-  if (supabase) {
-    try {
-      await supabase.from("student_activities").insert(activities.map(a => ({
-        ...a,
-        details: typeof a.details === "string" ? JSON.parse(a.details) : a.details
-      })));
-    } catch (_) {}
-  }
-
-  // Seed SQLite
-  try {
-    const insert = db.prepare(`
-      INSERT OR IGNORE INTO student_activities (id, user_id, activity_type, subject, duration_minutes, score, details, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    activities.forEach(a => {
-      insert.run(a.id, a.user_id, a.activity_type, a.subject, a.duration_minutes, a.score, a.details, a.created_at);
-    });
-  } catch (err) {
-    console.error("Failed seeding local sqlite activities:", err);
-  }
-}
+// Dummy/demo activity seeding removed entirely (not just its call site) --
+// TanStack Start's server-function code-splitting only knows to strip the
+// body of functions actually passed to .handler(...); an orphaned, no-longer-
+// called module-level async function that still imports db.server was being
+// pulled into the CLIENT bundle (node:sqlite has no browser build), breaking
+// the production build. Deleting it outright avoids that class of bug.
 
 export const getAnalyticsSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -225,9 +127,9 @@ export const getAnalyticsSummary = createServerFn({ method: "GET" })
       }
     );
 
-    if (activitiesCount === 0) {
-      await seedAnalyticsData(userId);
-    }
+    // Dummy/demo activity seeding intentionally disabled — a new user's
+    // analytics start genuinely empty (0 hours, 0 activities) instead of
+    // being auto-populated with fake study history.
 
     // 3. Fetch Activities
     const activities = await runWithFallback(

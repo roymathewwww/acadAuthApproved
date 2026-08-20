@@ -350,15 +350,10 @@ try {
     console.warn("[SQLite] Admin seed error:", e);
   }
 
-  // ─── Check & Seed MCA Christ Students ────────────────────────────────────
-  try {
-    const studentCount = db.prepare("SELECT COUNT(*) as cnt FROM students").get() as any;
-    if (!studentCount || studentCount.cnt < 50) {
-      seedMCAStudents(db);
-    }
-  } catch (e) {
-    console.warn("[SQLite] MCA Student seeding error:", e);
-  }
+  // Dummy/demo student seeding intentionally disabled — the local fallback
+  // DB starts empty and stays empty until real records are added.
+  // (seedMCAStudents() is kept below, unused, in case demo data is wanted
+  // again later — see also seedAnalyticsData() in analytics.functions.ts.)
 
 } catch (error) {
   console.error("[SQLite] Failed to initialize database:", error);

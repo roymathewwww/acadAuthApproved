@@ -24,19 +24,9 @@ const DEPARTMENTS = ["CSE", "ECE", "ISE", "MECH", "CIVIL", "EEE", "MCA", "MBA", 
 const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const SECTIONS = ["A", "B", "C", "D"];
 
-// Demonstration Dummy Student Records
-const DUMMY_STUDENTS = [
-  { id: "dummy-1", studentId: "1CR22CS045", name: "John Doe", email: "john.doe@acadsphere.edu", phone: "+91 9876543210", department: "CSE", semester: "6", section: "A", cgpa: 9.12, attendancePercentage: 94 },
-  { id: "dummy-2", studentId: "1CR22CS088", name: "Evana Joseph", email: "evana.j@acadsphere.edu", phone: "+91 9876543211", department: "CSE", semester: "6", section: "A", cgpa: 8.85, attendancePercentage: 91 },
-  { id: "dummy-3", studentId: "1CR22EC012", name: "Rahul Kumar", email: "rahul.k@acadsphere.edu", phone: "+91 9876543212", department: "ECE", semester: "4", section: "B", cgpa: 7.90, attendancePercentage: 82 },
-  { id: "dummy-4", studentId: "1CR22IS034", name: "Ananya Sharma", email: "ananya.s@acadsphere.edu", phone: "+91 9876543213", department: "ISE", semester: "6", section: "C", cgpa: 9.40, attendancePercentage: 96 },
-  { id: "dummy-5", studentId: "1CR22ME019", name: "Karthik Raja", email: "karthik.r@acadsphere.edu", phone: "+91 9876543214", department: "MECH", semester: "4", section: "A", cgpa: 7.20, attendancePercentage: 71 },
-  { id: "dummy-6", studentId: "1CR22CV008", name: "Priya Nair", email: "priya.n@acadsphere.edu", phone: "+91 9876543215", department: "CIVIL", semester: "2", section: "B", cgpa: 8.60, attendancePercentage: 88 },
-  { id: "dummy-7", studentId: "1CR22MC052", name: "Vikramaditya Singh", email: "vikram.s@acadsphere.edu", phone: "+91 9876543216", department: "MCA", semester: "4", section: "A", cgpa: 9.05, attendancePercentage: 93 },
-  { id: "dummy-8", studentId: "1CR22CS142", name: "Sneha Hegde", email: "sneha.h@acadsphere.edu", phone: "+91 9876543217", department: "CSE", semester: "6", section: "B", cgpa: 8.75, attendancePercentage: 89 },
-  { id: "dummy-9", studentId: "1CR22EC076", name: "Rohan Varma", email: "rohan.v@acadsphere.edu", phone: "+91 9876543218", department: "ECE", semester: "6", section: "A", cgpa: 6.95, attendancePercentage: 68 },
-  { id: "dummy-10", studentId: "1CR22IS091", name: "Aishwarya Rai", email: "aishwarya.r@acadsphere.edu", phone: "+91 9876543219", department: "ISE", semester: "6", section: "A", cgpa: 9.60, attendancePercentage: 98 },
-];
+// Dummy demonstration records intentionally removed — the roster now shows
+// only real records from the server, empty until students are actually
+// added.
 
 function StudentForm({ initialData, onSubmit, onCancel, isLoading }: {
   initialData?: any; onSubmit: (data: any) => void; onCancel: () => void; isLoading: boolean;
@@ -153,15 +143,7 @@ function StudentManagement() {
     refetchInterval: 30_000,
   });
 
-  const allStudents = useMemo(() => {
-    const combined = [...serverStudents];
-    for (const d of DUMMY_STUDENTS) {
-      if (!combined.some((s: any) => s.studentId === d.studentId || s.id === d.id)) {
-        combined.push(d);
-      }
-    }
-    return combined;
-  }, [serverStudents]);
+  const allStudents = useMemo(() => serverStudents, [serverStudents]);
 
   const filtered = useMemo(() => {
     return allStudents.filter((s: any) => {

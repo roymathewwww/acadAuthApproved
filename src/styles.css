@@ -17,7 +17,11 @@
 ───────────────────────────────────────────────── */
 @theme inline {
   /* Fonts */
-  --font-display: "Geist", "Inter", "Switzer", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Fraunces carries every heading + the wordmark — a wonky, characterful
+     serif on purpose, so the app doesn't read as "another Geist/Inter SaaS
+     template". Body copy stays on the clean grotesk for readability. */
+  --font-display: "Fraunces", "Georgia", "Iowan Old Style", serif;
+  --font-brand:   "Fraunces", "Georgia", serif;
   --font-sans:    "Geist", "Inter", "Switzer", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:    "Geist Mono", "Space Mono", ui-monospace, monospace;
 
@@ -73,6 +77,14 @@
   --color-surface:             var(--surface);
   --color-surface-foreground:  var(--surface-foreground);
   --color-cream:               var(--cream);
+
+  /* Brand accents — the only two colors deliberately introduced against the
+     black/white/warm-neutral base. Used sparingly (active states, CTAs, one
+     key highlight per view) rather than washed across every element. */
+  --color-brand-red:             var(--brand-red);
+  --color-brand-red-foreground:  var(--brand-red-foreground);
+  --color-brand-gold:            var(--brand-gold);
+  --color-brand-gold-foreground: var(--brand-gold-foreground);
 }
 
 /* ─────────────────────────────────────────────────
@@ -152,6 +164,12 @@
   --sidebar-accent-foreground:  #0A0A0A;
   --sidebar-border:             #E0DDD4;
   --sidebar-ring:               #0A0A0A;
+
+  /* Brand accents — crimson + antique gold, the two colors against black/white */
+  --brand-red:              #C81E3A;
+  --brand-red-foreground:   #FFFFFF;
+  --brand-gold:             #A9791C;
+  --brand-gold-foreground:  #1A1400;
 }
 
 /* ─────────────────────────────────────────────────
@@ -203,6 +221,12 @@
   --sidebar-accent-foreground:  #F7F5F0;
   --sidebar-border:             #2E2C28;
   --sidebar-ring:               #F7F5F0;
+
+  /* Brand accents — brightened for contrast against the near-black background */
+  --brand-red:              #FF5468;
+  --brand-red-foreground:   #1A0000;
+  --brand-gold:             #E8B84B;
+  --brand-gold-foreground:  #1A1400;
 }
 
 /* ─────────────────────────────────────────────────

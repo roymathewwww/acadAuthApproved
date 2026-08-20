@@ -142,6 +142,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap",
       },
+      // Fraunces — the wordmark / brand-headline display face (deliberately
+      // not another generic SaaS grotesk like the rest of the UI text)
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

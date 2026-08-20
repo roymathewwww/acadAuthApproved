@@ -13,16 +13,9 @@ export const Route = createFileRoute("/admin/live-activity")({
   component: LiveActivityPage,
 });
 
-const DEMO_LIVE_STUDENTS = [
-  { id: "live-1", studentId: "1CR22CS045", name: "John Doe", department: "CSE", sem: "6", status: "Active", page: "Classroom", topic: "DBMS Normalization BCNF", duration: "42 mins", ip: "192.168.1.45" },
-  { id: "live-2", studentId: "1CR22CS088", name: "Evana Joseph", department: "CSE", sem: "6", status: "Active", page: "AI Assistant", topic: "OS Banker's Algorithm", duration: "24 mins", ip: "192.168.1.88" },
-  { id: "live-3", studentId: "1CR22EC012", name: "Rahul Kumar", department: "ECE", sem: "4", status: "Active", page: "Classroom", topic: "Web Tech React Hooks", duration: "49 mins", ip: "192.168.1.12" },
-  { id: "live-4", studentId: "1CR22IS034", name: "Ananya Sharma", department: "ISE", sem: "6", status: "Active", page: "AI Assistant", topic: "Network TCP Handshake", duration: "18 mins", ip: "192.168.1.34" },
-  { id: "live-5", studentId: "1CR22ME019", name: "Karthik Raja", department: "MECH", sem: "4", status: "Idle", page: "Attendance", topic: "Thermodynamics Revision", duration: "1 hr 12 mins", ip: "192.168.1.19" },
-  { id: "live-6", studentId: "1CR22CV008", name: "Priya Nair", department: "CIVIL", sem: "2", status: "Active", page: "Classroom", topic: "Structural Analysis", duration: "35 mins", ip: "192.168.1.08" },
-  { id: "live-7", studentId: "1CR22MC052", name: "Vikramaditya Singh", department: "MCA", sem: "4", status: "Active", page: "Resume Tailorer", topic: "Mock Interview Prep", duration: "55 mins", ip: "192.168.1.52" },
-  { id: "live-8", studentId: "1CR22CS142", name: "Sneha Hegde", department: "CSE", sem: "6", status: "Active", page: "Resume Tailorer", topic: "ATS Keyword Check", duration: "15 mins", ip: "192.168.1.142" },
-];
+// Dummy demo sessions removed. There is no real live-presence tracking
+// backend wired up yet, so this list stays genuinely empty rather than
+// fabricating fake page/topic/duration/IP activity for real students.
 
 function LiveActivityPage() {
   const listFn = useServerFn(listStudents);
@@ -35,28 +28,11 @@ function LiveActivityPage() {
     refetchInterval: 10_000,
   });
 
-  const liveList = useMemo(() => {
-    const combined = [...DEMO_LIVE_STUDENTS];
-    for (const s of serverStudents) {
-      if (!combined.some((d) => d.studentId === s.studentId)) {
-        combined.push({
-          id: s.id,
-          studentId: s.studentId || "1CR22CS099",
-          name: s.name,
-          department: s.department || "CSE",
-          sem: String(s.semester || "6"),
-          status: "Active",
-          page: "Smart Notes",
-          topic: "DBMS Query Tuning",
-          duration: "12 mins",
-          ip: "192.168.1.99",
-        });
-      }
-    }
-    return combined.filter((item) =>
-      !search || item.name.toLowerCase().includes(search.toLowerCase()) || item.studentId.toLowerCase().includes(search.toLowerCase()) || item.page.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [serverStudents, search]);
+  // No real live-presence backend yet — nothing to show until one exists.
+  const liveList = useMemo(() => [] as Array<{
+    id: string; studentId: string; name: string; department: string; sem: string;
+    status: string; page: string; topic: string; duration: string; ip: string;
+  }>, [serverStudents, search]);
 
   function forceLogout(id: string, name: string) {
     setTerminatedSessions((prev) => ({ ...prev, [id]: true }));
@@ -127,6 +103,13 @@ function LiveActivityPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                {liveList.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-xs text-muted-foreground italic">
+                      No active sessions right now.
+                    </td>
+                  </tr>
+                )}
                 {liveList.map((s) => {
                   const isTerminated = terminatedSessions[s.id];
                   return (

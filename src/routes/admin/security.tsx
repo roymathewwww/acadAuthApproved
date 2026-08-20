@@ -23,18 +23,13 @@ interface ActiveSession {
   status: "Active" | "Suspicious";
 }
 
-const INITIAL_SESSIONS: ActiveSession[] = [
-  { id: "sess-1", user: "John Doe", usn: "1CR22CS045", role: "Student", ip: "192.168.1.104", device: "Chrome / Windows 11", location: "Bengaluru, IN", loginTime: "9:12 AM Today", status: "Active" },
-  { id: "sess-2", user: "Evana Joseph", usn: "1CR22CS088", role: "Student", ip: "192.168.1.145", device: "Edge / Windows 11", location: "Bengaluru, IN", loginTime: "9:30 AM Today", status: "Active" },
-  { id: "sess-3", user: "Rahul Kumar", usn: "1CR22EC012", role: "Student", ip: "192.168.1.189", device: "Chrome / Android", location: "Bengaluru, IN", loginTime: "9:05 AM Today", status: "Active" },
-  { id: "sess-4", user: "Unknown Account Attempt", usn: "1CR22CS999", role: "Unknown", ip: "45.122.18.90", device: "Python Requests Script", location: "Unknown Remote", loginTime: "8:50 AM Today", status: "Suspicious" },
-];
+// Dummy demo sessions/login-attempts removed — this page has no real
+// session-monitoring or auth-log backend wired up yet, so both lists start
+// genuinely empty rather than showing fabricated (and alarming-looking)
+// "suspicious" activity.
+const INITIAL_SESSIONS: ActiveSession[] = [];
 
-const FAILED_LOGINS = [
-  { id: "f1", email: "student.test@acadsphere.edu", ip: "192.168.1.105", reason: "Invalid Password (3 attempts)", timestamp: "9:42 AM Today", status: "Locked (15 mins)" },
-  { id: "f2", email: "admin.hack@external.com", ip: "185.220.101.5", reason: "Blocked IP Range", timestamp: "8:15 AM Today", status: "Permanent Block" },
-  { id: "f3", email: "jane.smith@acadsphere.edu", ip: "192.168.1.112", reason: "MFA Timeout", timestamp: "Yesterday 6:30 PM", status: "Resolved" },
-];
+const FAILED_LOGINS: Array<{ id: string; email: string; ip: string; reason: string; timestamp: string; status: string }> = [];
 
 function AdminSecurityPage() {
   const [sessions, setSessions] = useState<ActiveSession[]>(INITIAL_SESSIONS);

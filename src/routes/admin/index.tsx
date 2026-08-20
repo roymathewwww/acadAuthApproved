@@ -200,34 +200,11 @@ function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
-            {[
-              { name: "John Doe", usn: "1CR22CS045", dept: "CSE", sem: "6", status: "Online", page: "Classroom", login: "9:12 AM", session: "42 mins" },
-              { name: "Evana Joseph", usn: "1CR22CS088", dept: "CSE", sem: "6", status: "Online", page: "AI Assistant", login: "9:30 AM", session: "24 mins" },
-              { name: "Rahul Kumar", usn: "1CR22EC012", dept: "ECE", sem: "4", status: "Online", page: "Resume Tailorer", login: "9:05 AM", session: "49 mins" },
-            ].map((s) => (
-              <div key={s.usn} className="flex items-center justify-between p-3 rounded-xl bg-stone-50 dark:bg-zinc-800/50 border border-stone-200/80 dark:border-zinc-800">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-stone-900 dark:bg-zinc-100 text-stone-50 dark:text-zinc-900 font-bold text-xs flex items-center justify-center shrink-0">
-                    {s.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-stone-900 dark:text-zinc-100">{s.name}</p>
-                      <span className="text-[10px] font-mono text-stone-500 dark:text-zinc-400">({s.usn})</span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 dark:text-zinc-400 mt-0.5">
-                      {s.dept} · Sem {s.sem} — <span className="font-semibold text-stone-800 dark:text-zinc-200">{s.page}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    {s.status}
-                  </span>
-                  <p className="text-stone-500 dark:text-zinc-400 text-[10px] font-mono mt-1">{s.session}</p>
-                </div>
-              </div>
-            ))}
+            {/* Dummy demonstration sessions removed — shows nothing until
+                real live-activity tracking reports active students. */}
+            {([] as Array<{ name: string; usn: string; dept: string; sem: string; status: string; page: string; session: string }>).length === 0 && (
+              <p className="text-xs text-muted-foreground italic px-1 py-2">No students currently online.</p>
+            )}
           </CardContent>
         </Card>
 
