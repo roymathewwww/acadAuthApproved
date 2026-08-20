@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,6 +15,27 @@ import {
 export const Route = createFileRoute("/_authenticated/app/conversions")({
   component: ConversionsPage,
 });
+
+// A plain <a href={crossOriginUrl} download> is silently ignored by browsers
+// for cross-origin URLs (Supabase/CloudConvert are a different origin from
+// the app) — it just navigates/opens a new tab instead of saving the file,
+// which is exactly why clicking Download wasn't actually starting a
+// download. Fetching the file into a blob first and downloading from a
+// blob: URL (always same-origin) makes the save happen immediately, no
+// extra click or tab required.
+async function triggerDownload(url: string, filename: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
 
 // ── Conversion type definitions ───────────────────────────────────────────────
 interface ConversionType {
@@ -120,7 +142,19 @@ function ConversionsPage() {
   const [converting, setConverting] = useState(false);
   const [progress, setProgress] = useState<"idle" | "uploading" | "processing" | "saving" | "done">("idle");
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const downloadItem = async (item: HistoryItem) => {
+    setDownloadingId(item.id);
+    try {
+      await triggerDownload(item.signedUrl, item.outputFileName);
+    } catch (err: any) {
+      toast.error("Download failed", { description: err.message });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // ── Drag & drop handlers ───────────────────────────────────────────────────
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -284,24 +318,6 @@ function ConversionsPage() {
             <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
               Convert PDFs, Word documents, spreadsheets, presentations, and images with full structural fidelity.
             </p>
-
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {[
-                { icon: Zap, label: "Fast processing" },
-                { icon: Shield, label: "Encrypted & secure" },
-                { icon: Clock, label: "1h download cache" },
-                { icon: Sparkles, label: "8 supported formats" },
-              ].map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-1.5 border border-border/70 bg-muted/40 rounded-lg px-2.5 py-1 text-muted-foreground text-[11px] font-medium"
-                >
-                  <Icon className="h-3 w-3 text-muted-foreground" />
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </header>
 
@@ -336,8 +352,10 @@ function ConversionsPage() {
                     const isSelected = selectedConversion.id === conv.id;
                     const Icon = conv.icon;
                     return (
-                      <button
+                      <motion.button
                         key={conv.id}
+                        whileHover={{ scale: 1.04, y: -2 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => {
                           setSelectedConversion(conv);
                           setDroppedFile(null);
@@ -345,18 +363,25 @@ function ConversionsPage() {
                         }}
                         className={`
                           group relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center
-                          transition-all duration-150 cursor-pointer
+                          transition-colors duration-150 cursor-pointer
                           ${isSelected
-                            ? "border-foreground bg-accent text-foreground shadow-xs ring-1 ring-border"
-                            : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                            ? "border-brand-red bg-brand-red/10 text-foreground shadow-sm shadow-brand-red/20"
+                            : "border-border/60 bg-muted/20 hover:border-brand-red/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                           }
                         `}
                       >
+                        {isSelected && (
+                          <motion.div
+                            layoutId="conversionSelectedRing"
+                            className="absolute inset-0 rounded-xl ring-2 ring-brand-red pointer-events-none"
+                            transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                          />
+                        )}
                         <div className={`
                           h-8 w-8 rounded-lg flex items-center justify-center transition-colors
                           ${isSelected
-                            ? "bg-foreground text-background"
-                            : "bg-muted border border-border/80 text-foreground group-hover:border-foreground/40"
+                            ? "bg-brand-red text-brand-red-foreground"
+                            : "bg-muted border border-border/80 text-foreground group-hover:border-brand-red/40"
                           }
                         `}>
                           <Icon className="h-4 w-4" />
@@ -366,10 +391,10 @@ function ConversionsPage() {
                         </span>
                         {isSelected && (
                           <div className="absolute top-1.5 right-1.5">
-                            <Check className="h-3 w-3 text-foreground" />
+                            <Check className="h-3 w-3 text-brand-red" />
                           </div>
                         )}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -462,47 +487,68 @@ function ConversionsPage() {
             <Card className="border-border/80 bg-card/70 shadow-xs rounded-2xl overflow-hidden">
               <CardContent className="pt-4 pb-4 space-y-4">
                 {/* Progress bar */}
-                {converting && (
-                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/60">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-foreground">{progressLabel}</span>
-                      <span className="font-mono text-muted-foreground">{progressPercent}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-foreground rounded-full transition-all duration-500"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {converting && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/60 overflow-hidden"
+                    >
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-foreground">{progressLabel}</span>
+                        <span className="font-mono text-muted-foreground">{progressPercent}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-brand-red rounded-full"
+                          animate={{ width: `${progressPercent}%` }}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Success result */}
-                {progress === "done" && history.length > 0 && (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-muted/40 border border-border">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground">File converted successfully</p>
-                      <p className="text-[10px] font-mono text-muted-foreground truncate">{history[0].outputFileName}</p>
-                    </div>
-                    <a
-                      href={history[0].signedUrl}
-                      download={history[0].outputFileName}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                <AnimatePresence>
+                  {progress === "done" && history.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                      className="flex items-center gap-3 p-3.5 rounded-xl bg-muted/40 border border-border"
                     >
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 20, delay: 0.1 }}
+                        className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </motion.div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground">File converted successfully</p>
+                        <p className="text-[10px] font-mono text-muted-foreground truncate">{history[0].outputFileName}</p>
+                      </div>
                       <Button
                         size="sm"
-                        className="h-8 text-xs px-3 bg-foreground text-background hover:bg-foreground/90 gap-1.5"
+                        onClick={() => downloadItem(history[0])}
+                        disabled={downloadingId === history[0].id}
+                        className="h-8 text-xs px-3 bg-brand-red text-brand-red-foreground hover:opacity-90 gap-1.5"
                       >
-                        <Download className="h-3.5 w-3.5" />
+                        {downloadingId === history[0].id ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
                         Download
                       </Button>
-                    </a>
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Action button */}
                 <Button
@@ -547,16 +593,17 @@ function ConversionsPage() {
                 {CONVERSIONS.map((conv) => {
                   const Icon = conv.icon;
                   return (
-                    <div
+                    <motion.div
                       key={conv.id}
+                      whileHover={{ x: 3 }}
                       onClick={() => {
                         setSelectedConversion(conv);
                         setDroppedFile(null);
                         setProgress("idle");
                       }}
-                      className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-2 rounded-lg border transition-colors cursor-pointer ${
                         selectedConversion.id === conv.id
-                          ? "bg-accent border-border"
+                          ? "bg-brand-red/10 border-brand-red/40"
                           : "border-transparent hover:bg-muted/40 hover:border-border/40"
                       }`}
                     >
@@ -569,7 +616,7 @@ function ConversionsPage() {
                       <span className="text-[10px] font-mono text-muted-foreground uppercase">
                         .{conv.outputExt}
                       </span>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </CardContent>
@@ -584,37 +631,43 @@ function ConversionsPage() {
                       <Clock className="h-3.5 w-3.5 text-foreground" />
                       Session History
                     </CardTitle>
-                    <span className="text-[10px] font-mono text-muted-foreground">1h expiry</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">24h expiry</span>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3 space-y-2">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/30 border border-border/60"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{item.outputFileName}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{item.conversion}</p>
-                      </div>
-                      <a
-                        href={item.signedUrl}
-                        download={item.outputFileName}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0"
+                  <AnimatePresence initial={false}>
+                    {history.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 8 }}
+                        transition={{ duration: 0.2 }}
+                        whileHover={{ scale: 1.01 }}
+                        className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/30 border border-border/60 hover:border-brand-red/30 transition-colors"
                       >
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{item.outputFileName}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">{item.conversion}</p>
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 w-7 p-0 rounded-lg border-border/70 hover:bg-muted"
+                          onClick={() => downloadItem(item)}
+                          disabled={downloadingId === item.id}
+                          className="h-7 w-7 p-0 rounded-lg border-border/70 hover:bg-muted shrink-0"
                         >
-                          <Download className="h-3.5 w-3.5" />
+                          {downloadingId === item.id ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
                         </Button>
-                      </a>
-                    </div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </CardContent>
               </Card>
             )}

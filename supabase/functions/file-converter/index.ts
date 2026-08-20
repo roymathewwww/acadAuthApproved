@@ -1,6 +1,6 @@
 // supabase/functions/file-converter/index.ts
 // CloudConvert v2 — full PDF ↔ Office conversion bridge for AcadSphere.
-// Flow: Signed URL (import) → Convert → Export URL → Download → Save to Storage → Return signed URL
+// Flow: Signed URL (import) → Convert → Return CloudConvert's export URL directly
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -47,20 +47,6 @@ function getUserId(token: string): string | null {
   }
 }
 
-// ── MIME helper ───────────────────────────────────────────────────────────────
-function getMime(ext: string): string {
-  const m: Record<string, string> = {
-    pdf:  "application/pdf",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    jpg:  "image/jpeg",
-    jpeg: "image/jpeg",
-    png:  "image/png",
-  };
-  return m[ext] ?? "application/octet-stream";
-}
-
 // ── CloudConvert API helper ───────────────────────────────────────────────────
 async function ccFetch(path: string, method: string, body?: unknown): Promise<any> {
   const res = await fetch(`https://api.cloudconvert.com/v2${path}`, {
@@ -81,10 +67,13 @@ async function ccFetch(path: string, method: string, body?: unknown): Promise<an
 }
 
 // ── Poll job until finished or error (max 120 s) ──────────────────────────────
+// Polls every 1s (was 3s) — the interval itself was adding up to 3s of pure
+// waiting on top of CloudConvert's actual processing time for no reason, and
+// on every single conversion.
 async function waitForJob(jobId: string): Promise<any> {
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 3000));   // poll every 3 s
+    await new Promise((r) => setTimeout(r, 1000));   // poll every 1 s
     const { data: job } = await ccFetch(`/jobs/${jobId}`, "GET");
     console.log(`[cc] job ${jobId} status: ${job.status}`);
 
@@ -192,38 +181,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const exportUrl = exportTask.result.files[0].url as string;
     console.log(`[cc] export URL ready: ${exportUrl}`);
 
-    // ── 7. Download converted file buffer ─────────────────────────────────────
-    const dlRes = await fetch(exportUrl);
-    if (!dlRes.ok) throw new Error(`Failed to download converted file: ${dlRes.status}`);
-    const convertedBuffer = await dlRes.arrayBuffer();
-    console.log(`[cc] downloaded ${convertedBuffer.byteLength} bytes`);
+    // ── 7. Hand the CloudConvert export URL straight back ─────────────────────
+    // Previously this downloaded the full converted file into the function's
+    // memory and re-uploaded it to Supabase Storage before responding — a
+    // full extra file transfer round trip on every single conversion, adding
+    // real, avoidable latency (worse the larger the file). CloudConvert's own
+    // export URLs are already directly downloadable and valid for 24h, well
+    // past the 1h window the Supabase-hosted copy offered, so there's no
+    // reliability tradeoff in skipping that step.
+    const baseName = fileName.replace(/\.[^.]+$/, "");
 
-    // ── 8. Save to Supabase Storage ───────────────────────────────────────────
-    const ts         = Date.now();
-    const baseName   = fileName.replace(/\.[^.]+$/, "");
-    const outputPath = `${userId}/${ts}_${baseName}_converted.${fmt.ext}`;
-
-    const { error: saveErr } = await admin.storage
-      .from("conversions")
-      .upload(outputPath, convertedBuffer, {
-        contentType: getMime(fmt.ext),
-        upsert: true,
-      });
-    if (saveErr) throw new Error(`Storage save failed: ${saveErr.message}`);
-
-    // ── 9. Create signed download URL (1 hour) ────────────────────────────────
-    const { data: signedOut, error: signErr } = await admin.storage
-      .from("conversions")
-      .createSignedUrl(outputPath, 3600);
-    if (signErr || !signedOut) throw new Error(`Signed URL failed: ${signErr?.message}`);
-
-    console.log(`[cc] ✅ DONE → ${outputPath}`);
+    console.log(`[cc] ✅ DONE → ${baseName}_converted.${fmt.ext}`);
 
     return jsonResp({
-      success:     true,
-      output_path: outputPath,
-      signed_url:  signedOut.signedUrl,
-      file_name:   `${baseName}_converted.${fmt.ext}`,
+      success:    true,
+      signed_url: exportUrl,
+      file_name:  `${baseName}_converted.${fmt.ext}`,
     }, 200);
 
   } catch (err: unknown) {
