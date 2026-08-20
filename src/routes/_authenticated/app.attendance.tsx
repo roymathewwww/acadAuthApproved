@@ -821,10 +821,10 @@ function AttendancePage() {
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 relative
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 relative hover:scale-[1.03] active:scale-[0.98]
                     ${activeTab === tab
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30"
-                      : "bg-card/80 border border-border/80 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      ? "bg-brand-red text-brand-red-foreground shadow-md shadow-brand-red/30"
+                      : "bg-card/80 border border-border/80 text-muted-foreground hover:bg-accent hover:text-foreground hover:border-brand-red/40"
                     }`}
                 >
                   <Icon className="h-4 w-4" /> {label}
@@ -1408,42 +1408,47 @@ function AttendancePage() {
                 </div>
               </div>
 
-              {/* Navigation Tabs */}
-              <div className="flex items-center gap-1.5 p-1 bg-muted/50 rounded-xl border border-border/50 mb-5">
-                <button
-                  type="button"
-                  onClick={() => setSyncTab("server")}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center ${
-                    syncTab === "server"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  ⚡ Direct Sync
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSyncTab("extension")}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center ${
-                    syncTab === "extension"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  🧩 Extension
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSyncTab("bookmarklet")}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center ${
-                    syncTab === "bookmarklet"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  🔖 Bookmarklet
-                </button>
-              </div>
+              {/* Navigation Tabs — Extension/Bookmarklet only appear once
+                  Direct Sync has actually failed, or the user has already
+                  navigated to one. Showing all three upfront every time was
+                  confusing since two of them only exist as a fallback. */}
+              {(syncTab !== "server" || captchaSession?.reachable === false) && (
+                <div className="flex items-center gap-1.5 p-1 bg-muted/50 rounded-xl border border-border/50 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setSyncTab("server")}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center hover:scale-[1.02] ${
+                      syncTab === "server"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    ⚡ Direct Sync
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSyncTab("extension")}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center hover:scale-[1.02] ${
+                      syncTab === "extension"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    🧩 Extension
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSyncTab("bookmarklet")}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center hover:scale-[1.02] ${
+                      syncTab === "bookmarklet"
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    🔖 Bookmarklet
+                  </button>
+                </div>
+              )}
 
               {/* ── TAB 1: Direct Server-Side Sync (CAPTCHA-aware) ── */}
               {syncTab === "server" && (

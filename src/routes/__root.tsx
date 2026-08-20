@@ -142,11 +142,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap",
       },
-      // Fraunces — the wordmark / brand-headline display face (deliberately
-      // not another generic SaaS grotesk like the rest of the UI text)
+      // Bricolage Grotesque — the wordmark / brand-headline display face,
+      // used bold/black-weight (deliberately not another generic SaaS
+      // grotesk like the rest of the UI text, and bolder/darker than the
+      // earlier Fraunces pass)
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800;12..96,900&display=swap",
       },
     ],
   }),

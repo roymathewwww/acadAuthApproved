@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import logo from "@/assets/studentos-logo.png";
 import { Loader2, Shield, GraduationCap, CheckCircle2, Sparkles, Mail, Lock, User as UserIcon } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -253,16 +252,9 @@ function AuthPage() {
 
       {/* ─── Left Editorial Branding Panel ─── */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-[#F4F2EC] border-r border-[#E0DDD4]">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-[#0A0A0A] text-white overflow-hidden shadow-sm">
-            <img
-              src={logo}
-              alt="AcadSphere"
-              className="h-4.5 w-4.5 object-contain invert"
-            />
-          </div>
-          <span className="font-sans font-bold text-base tracking-tight text-[#0A0A0A]">
-            AcadSphere
+        <Link to="/" className="flex items-center">
+          <span className="font-brand font-black text-lg tracking-tight text-[#0A0A0A]">
+            Acad<span className="text-brand-red">Sphere</span>
           </span>
         </Link>
 
@@ -311,12 +303,9 @@ function AuthPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
 
         {/* Mobile Branding Header */}
-        <Link to="/" className="flex items-center gap-2.5 mb-8 lg:hidden">
-          <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-[#0A0A0A] text-white overflow-hidden shadow-sm">
-            <img src={logo} alt="AcadSphere" className="h-4.5 w-4.5 object-contain invert" />
-          </div>
-          <span className="font-sans font-bold text-base tracking-tight text-[#0A0A0A]">
-            AcadSphere
+        <Link to="/" className="flex items-center mb-8 lg:hidden">
+          <span className="font-brand font-black text-lg tracking-tight text-[#0A0A0A]">
+            Acad<span className="text-brand-red">Sphere</span>
           </span>
         </Link>
 

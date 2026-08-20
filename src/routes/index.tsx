@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import logo from "@/assets/studentos-logo.png";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { localDemoLogin } from "@/lib/auth.functions";
@@ -161,17 +160,10 @@ function Landing() {
           className="w-full max-w-5xl flex items-center justify-between px-5 h-12 nav-pill transition-editorial"
           style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
         >
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-6 w-6 rounded-md border border-border bg-foreground overflow-hidden">
-              <img
-                src={logo}
-                alt="AcadSphere"
-                className="h-4 w-4 object-contain invert dark:invert-0"
-              />
-            </div>
-            <span className="font-sans font-bold text-sm tracking-tight text-foreground">
-              AcadSphere
+          {/* Wordmark */}
+          <Link to="/" className="flex items-center">
+            <span className="font-brand font-black text-base tracking-tight text-foreground">
+              Acad<span className="text-brand-red">Sphere</span>
             </span>
           </Link>
 
@@ -235,14 +227,14 @@ function Landing() {
             </div>
 
             <h1
-              className="font-sans font-extrabold text-foreground"
+              className="font-display font-black text-foreground"
               style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)", letterSpacing: "-0.04em", lineHeight: 1.05 }}
             >
               The premium academic
               <br />
               operating system for
               <br />
-              <span className="text-muted-foreground">high achievers.</span>
+              <span className="text-brand-red">high achievers.</span>
             </h1>
 
             <p className="mt-8 max-w-lg text-base font-sans text-muted-foreground leading-relaxed">
@@ -277,8 +269,8 @@ function Landing() {
                     92% Placement Ready
                   </p>
                 </div>
-                <div className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center">
-                  <img src={logo} alt="" className="h-5 w-5 object-contain" />
+                <div className="h-8 w-8 rounded-lg border border-brand-gold/40 bg-brand-gold/10 flex items-center justify-center">
+                  <span className="h-2.5 w-2.5 rounded-full bg-brand-red" />
                 </div>
               </div>
 
@@ -328,7 +320,7 @@ function Landing() {
             {STATS.map((stat) => (
               <div key={stat.label} className="px-6 first:pl-0 last:pr-0 text-center md:text-left">
                 <p
-                  className="font-sans font-extrabold text-foreground"
+                  className="font-display font-black text-foreground"
                   style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", letterSpacing: "-0.04em", lineHeight: 1.1 }}
                 >
                   {stat.value}
@@ -351,7 +343,7 @@ function Landing() {
               Unified Platform
             </p>
             <h2
-              className="font-sans font-extrabold text-foreground"
+              className="font-display font-black text-foreground"
               style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", letterSpacing: "-0.04em", lineHeight: 1.1 }}
             >
               13 engineered modules
@@ -402,7 +394,7 @@ function Landing() {
               Student Testimonials
             </p>
             <h2
-              className="font-sans font-extrabold text-foreground"
+              className="font-display font-black text-foreground"
               style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", letterSpacing: "-0.04em", lineHeight: 1.1 }}
             >
               Loved by serious
@@ -457,7 +449,7 @@ function Landing() {
               Ready to start?
             </p>
             <h2
-              className="font-sans font-extrabold text-foreground"
+              className="font-display font-black text-foreground"
               style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)", letterSpacing: "-0.04em", lineHeight: 1.05 }}
             >
               Sign in to your
@@ -482,11 +474,10 @@ function Landing() {
           {/* Right: login form */}
           <div className="rounded-2xl border border-border bg-background p-8">
             <div className="flex items-center gap-2.5 mb-6">
-              <div className="h-8 w-8 rounded-lg border border-border bg-foreground flex items-center justify-center overflow-hidden">
-                <img src={logo} alt="AcadSphere" className="h-5 w-5 object-contain invert dark:invert-0" />
-              </div>
               <div>
-                <p className="font-sans font-bold text-sm text-foreground">AcadSphere</p>
+                <p className="font-brand font-black text-base text-foreground">
+                  Acad<span className="text-brand-red">Sphere</span>
+                </p>
                 <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.08em]">Sign in · Works offline</p>
               </div>
             </div>
@@ -546,7 +537,7 @@ function Landing() {
               Get Started
             </p>
             <h2
-              className="font-sans font-extrabold text-foreground"
+              className="font-display font-black text-foreground"
               style={{ fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.04em", lineHeight: 1.05 }}
             >
               Redefine your
@@ -576,10 +567,9 @@ function Landing() {
           {/* Left: brand */}
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="flex items-center justify-center h-6 w-6 rounded-md border border-border bg-foreground overflow-hidden">
-                <img src={logo} alt="AcadSphere" className="h-4 w-4 object-contain invert dark:invert-0" />
-              </div>
-              <span className="font-sans font-bold text-sm text-foreground">AcadSphere</span>
+              <span className="font-brand font-black text-base text-foreground">
+                Acad<span className="text-brand-red">Sphere</span>
+              </span>
             </div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
               © 2026 AcadSphere Inc.

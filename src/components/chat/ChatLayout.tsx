@@ -228,13 +228,13 @@ export function ChatLayout({
             {!collapsed ? (
               <span
                 ref={wordmarkRef}
-                className="font-brand text-2xl font-semibold tracking-tight text-foreground truncate"
+                className="font-brand text-2xl font-black tracking-tight text-foreground truncate"
                 style={{ fontOpticalSizing: "auto" }}
               >
                 Acad<span className="text-brand-red">Sphere</span>
               </span>
             ) : (
-              <span className="font-brand text-xl font-semibold text-brand-red">A</span>
+              <span className="font-brand text-xl font-black text-brand-red">A</span>
             )}
           </Link>
 
