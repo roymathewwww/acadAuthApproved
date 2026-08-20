@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback, useRef } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { tailorResume } from "@/lib/resume.functions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,121 +140,13 @@ async function extractTextFromDocx(file: File): Promise<string> {
   return clean.trim();
 }
 
-// ─── Gemini 3.6 Flash API Call ────────────────────────────────────────────────
-async function tailorResumeWithGemini(
-  resumeText: string,
-  jobDescription: string,
-): Promise<TailoredResume> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "VITE_GEMINI_API_KEY is not set. Please add it to your .env file and restart the dev server.",
-    );
-  }
-
-  const systemPrompt = `You are an elite Executive Resume Strategist and ATS Specialist.
-Your task is to analyze the user's ORIGINAL RESUME and target JOB DESCRIPTION, then produce an upgraded, highly tailored, ATS-optimized JSON payload.
-
-CRITICAL RULES:
-1. DO NOT STRIP CONTENT: Retain all high-impact technical details, metrics, frameworks, projects, live URLs, GitHub, personal portfolio link, and certifications from the original resume.
-2. ATS KEYWORD INTEGRATION: Seamlessly weave keywords and skills from the Job Description into the Professional Summary, Experience bullet points, and Projects without lying or degrading technical depth.
-3. CONCISE IMPACT BULLETS: Keep bullet points punchy and action-oriented using strong verbs (e.g., "Architected", "Integrated", "Optimized").
-4. FILE NAMING: Generate a custom, clean filename (e.g., "Roy_Mathew_Frontend_Developer_Resume").
-
-RESUME TEXT:
-${resumeText}
-
-JOB DESCRIPTION:
-${jobDescription}
-
-RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA:
-{
-  "customFilename": "First_Last_TargetRole_Resume",
-  "header": {
-    "fullName": "Roy Mathew",
-    "subTitle": "Master of Computer Applications (MCA) Student | Full-Stack & Frontend Developer",
-    "contact": "roy.mathew@mca.christuniversity.in | +91 75940 29419 | Bengaluru, Karnataka",
-    "links": "roymathew.site | linkedin.com/in/roymathew | github.com/roymathew"
-  },
-  "summary": "Tailored 2-3 sentence executive summary rich in ATS keywords...",
-  "skills": {
-    "Frontend": "React, HTML5, CSS3, Tailwind CSS, Next.js, TypeScript",
-    "Backend & DB": "REST APIs, Supabase, PostgreSQL, Node.js",
-    "Cloud & DevOps": "AWS (ECS, EC2, S3, CloudFront, WAF), Git, GitHub, CI/CD, Vercel",
-    "Concepts": "CRUD, OOP, System Design, Real-Time WebSockets, Agile"
-  },
-  "experience": [
-    {
-      "role": "Full Stack Developer Intern",
-      "company": "Job Jockey",
-      "location": "Remote",
-      "period": "2026",
-      "bullets": [
-        "Built a real-time voice-AI calling SaaS platform (Next.js/React, FastAPI) with sub-600ms latency using Pipecat streaming and WebSockets.",
-        "Integrated multi-provider STT/TTS fallback (Groq, Deepgram, Cartesia) and Groq GPT-OSS 120B LLM layer with Twilio telephony.",
-        "Designed SQLite-backed multi-tenant schema for campaign analytics and lead management."
-      ]
-    }
-  ],
-  "projects": [
-    {
-      "name": "AcadSphere",
-      "tech": "TanStack Start (React 19), Supabase, PostgreSQL, TypeScript, AI SDK",
-      "period": "2026",
-      "bullets": [
-        "Full-stack academic portal for real-time attendance tracking, grade analytics, and multi-course sync via Supabase Edge Functions.",
-        "Integrated Chrome Extension sync scripts and context-aware AI tutor assistant using Vercel AI SDK."
-      ]
-    }
-  ],
-  "education": [
-    {
-      "degree": "Master of Computer Applications (MCA)",
-      "institution": "CHRIST (Deemed to be University), Bengaluru",
-      "period": "2025 - Present",
-      "details": ""
-    },
-    {
-      "degree": "Bachelor of Computer Applications (BCA)",
-      "institution": "Christ Nagar College",
-      "period": "2021 - 2024",
-      "details": "CGPA: 7.4"
-    }
-  ],
-  "certifications": [
-    "AWS Academy Graduate - Cloud Foundations Training Badge (AWS)",
-    "AI-first Software Engineering (Infosys)",
-    "Cloud Computing (Infosys Springboard)",
-    "Generative AI Essentials: Using LLMs to Work with Data (IBM)"
-  ]
-}`;
-
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 4096,
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-  );
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Gemini API error ${resp.status}`);
-  }
-
-  const data = await resp.json();
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  return JSON.parse(cleaned) as TailoredResume;
-}
+// Tailoring runs server-side via the `tailorResume` server function
+// (src/lib/resume.functions.ts), which uses the same AI gateway already
+// validated for the AI Assistant. This avoids shipping any AI provider key
+// to the browser and avoids Vite's build-time-only VITE_* env var pitfall
+// that broke this feature on Render (VITE_GEMINI_API_KEY is only baked in
+// at `npm run build` time, and Render's dashboard env vars aren't passed
+// into the Docker build stage, so it always resolved to `undefined`).
 
 // ─── Stateful PDF Layout Engine (Zero-Overlap ATS Engine) ────────────────────
 const JSPDF_CDN =
@@ -464,6 +358,7 @@ export const generateATSResume = async (data: TailoredResume): Promise<void> => 
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function ResumeTailorerPage() {
+  const tailorFn = useServerFn(tailorResume);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState("");
@@ -551,8 +446,8 @@ function ResumeTailorerPage() {
     setIsTailoring(true);
     setTailoredResume(null);
     try {
-      const result = await tailorResumeWithGemini(extractedText, jobDescription);
-      setTailoredResume(result);
+      const result = await tailorFn({ data: { resumeText: extractedText, jobDescription } });
+      setTailoredResume(result as TailoredResume);
       toast.success("🎉 Resume tailored! Ready to download 1-page ATS PDF.");
     } catch (err: any) {
       console.error(err);

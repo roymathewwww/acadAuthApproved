@@ -15,6 +15,11 @@ const ResumeInputSchema = z.object({
   provider: z.enum(["Gemini", "OpenAI"]).optional(),
 });
 
+const TailorInputSchema = z.object({
+  resumeText: z.string().min(1),
+  jobDescription: z.string().min(1),
+});
+
 function analyzeResumeHeuristics(resumeText: string, jobDescription: string) {
   const rWords = new Set(resumeText.toLowerCase().match(/\b\w+\b/g) || []);
   const jdWords = new Set(jobDescription.toLowerCase().match(/\b\w+\b/g) || []);
@@ -220,5 +225,74 @@ export const analyzeResume = createServerFn({ method: "POST" })
         text: resumeText,
         analysis: analyzeResumeHeuristics(resumeText, data.jobDescription)
       };
+    }
+  });
+
+// ─── Full resume tailoring (rewrite into a structured, ATS-optimized resume) ──
+// Runs server-side so the AI provider key never reaches the browser bundle
+// (it previously called Gemini directly from client code using
+// import.meta.env.VITE_GEMINI_API_KEY, which both leaked the key to anyone
+// opening devtools AND silently broke in production because Vite only bakes
+// VITE_* vars in at build time, not from Render's runtime env).
+export const tailorResume = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => TailorInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const model = getAiModel();
+    if (!model) {
+      throw new Error("No AI provider is configured on the server. Set GROQ_API_KEY (or OPENAI_API_KEY / GEMINI_API_KEY) in the environment.");
+    }
+
+    const prompt = `You are an elite Executive Resume Strategist and ATS Specialist.
+Your task is to analyze the user's ORIGINAL RESUME and target JOB DESCRIPTION, then produce an upgraded, highly tailored, ATS-optimized JSON payload.
+
+CRITICAL RULES:
+1. DO NOT STRIP CONTENT: Retain all high-impact technical details, metrics, frameworks, projects, live URLs, GitHub, personal portfolio link, and certifications from the original resume.
+2. ATS KEYWORD INTEGRATION: Seamlessly weave keywords and skills from the Job Description into the Professional Summary, Experience bullet points, and Projects without lying or degrading technical depth.
+3. CONCISE IMPACT BULLETS: Keep bullet points punchy and action-oriented using strong verbs (e.g., "Architected", "Integrated", "Optimized").
+4. FILE NAMING: Generate a custom, clean filename (e.g., "First_Last_Target_Role_Resume") derived from the resume's own header, never a placeholder person.
+5. Use ONLY facts present in the original resume — never invent a name, employer, project, or credential that isn't there.
+
+RESUME TEXT:
+${data.resumeText}
+
+JOB DESCRIPTION:
+${data.jobDescription}
+
+RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA (no markdown fences, no prose outside the JSON):
+{
+  "customFilename": "First_Last_TargetRole_Resume",
+  "header": {
+    "fullName": "<from resume>",
+    "subTitle": "<from resume, e.g. degree/title>",
+    "contact": "<email | phone | location, from resume>",
+    "links": "<portfolio | linkedin | github, from resume>"
+  },
+  "summary": "Tailored 2-3 sentence executive summary rich in ATS keywords, based only on real resume content.",
+  "skills": { "<Category>": "<comma-separated skills>" },
+  "experience": [
+    { "role": "", "company": "", "location": "", "period": "", "bullets": ["", ""] }
+  ],
+  "projects": [
+    { "name": "", "tech": "", "period": "", "bullets": ["", ""] }
+  ],
+  "education": [
+    { "degree": "", "institution": "", "period": "", "details": "" }
+  ],
+  "certifications": ["", ""]
+}`;
+
+    const response = await generateText({ model, prompt });
+
+    let text = response.text.trim();
+    if (text.startsWith("```")) {
+      text = text.replace(/^```(?:json)?/im, "").replace(/```$/m, "").trim();
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.error("[tailorResume] Model did not return valid JSON:", text.slice(0, 500));
+      throw new Error("AI tailoring returned an unexpected format. Please try again.");
     }
   });
