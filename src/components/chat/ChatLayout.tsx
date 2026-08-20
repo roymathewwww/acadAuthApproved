@@ -2,7 +2,7 @@ import { type ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listThreads, createThread, deleteThread } from "@/lib/chat.functions";
+import { listThreads, deleteThread } from "@/lib/chat.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,7 +39,6 @@ export function ChatLayout({
   const glowRef = useRef<HTMLDivElement>(null);
 
   const listFn = useServerFn(listThreads);
-  const createFn = useServerFn(createThread);
   const deleteFn = useServerFn(deleteThread);
 
   const { data: threads = [] } = useQuery({
@@ -140,15 +139,6 @@ export function ChatLayout({
       { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.04 },
     );
   }, []);
-
-  const create = useMutation({
-    mutationFn: () => createFn({ data: {} }),
-    onSuccess: (t) => {
-      qc.invalidateQueries({ queryKey: ["threads"] });
-      navigate({ to: "/app/$threadId", params: { threadId: t.id } });
-      setMobileOpen(false);
-    },
-  });
 
   async function handleSignOut() {
     localStorage.removeItem("demo_session_token");
@@ -375,17 +365,7 @@ export function ChatLayout({
 
           {/* Right Actions & Profile */}
           <div className="flex items-center gap-2.5">
-            {!isAdmin ? (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => create.mutate()}
-                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-xl bg-brand-red text-brand-red-foreground text-xs font-semibold shadow-sm shadow-brand-red/30 hover:opacity-90 transition-opacity"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ask AI</span>
-              </motion.button>
-            ) : (
+            {isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.96 }}
