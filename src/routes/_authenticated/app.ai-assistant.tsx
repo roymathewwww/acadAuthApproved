@@ -610,11 +610,11 @@ function AIAssistantPage() {
         </aside>
 
         {/* ── Main Chat Area ── */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gradient-to-b from-muted/40 via-background to-background">
 
           {/* Chat header */}
-          <div className="flex items-center justify-between h-12 px-3 md:px-5 border-b border-border shrink-0 bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between h-14 px-3 md:px-5 border-b border-border shrink-0 bg-card/70 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.02)]">
+            <div className="flex items-center gap-2.5">
               {/* Mobile sidebar toggle */}
               <button
                 className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
@@ -623,8 +623,8 @@ function AIAssistantPage() {
               >
                 <PanelLeft className="h-4 w-4" />
               </button>
-              <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               <span className="text-sm font-semibold text-foreground truncate">
                 {activeThreadId
@@ -632,7 +632,8 @@ function AIAssistantPage() {
                   : "AI Study Assistant"}
               </span>
             </div>
-            <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
+            <span className="flex items-center gap-1.5 text-[10px] bg-primary/[0.08] text-primary border border-primary/15 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Groq · GPT-OSS 120B
             </span>
           </div>
@@ -693,16 +694,16 @@ function AIAssistantPage() {
                 */}
                 {streamingId && (
                   <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                      <Bot className="h-4 w-4 text-primary-foreground" />
                     </div>
                     {streamingContent ? (
                       /* Live responding card using AiResponseWriter with auto-scroll and status header */
-                      <div className="max-w-[85%] w-full bg-card border border-border text-foreground rounded-2xl rounded-tl-sm p-4 shadow-sm ring-1 ring-primary/10">
-                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+                      <div className="max-w-[85%] w-full bg-card border border-border text-foreground rounded-2xl rounded-tl-sm p-4 shadow-md shadow-black/[0.03]">
+                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/60">
                           <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                           </span>
                           <span className="text-xs font-semibold text-foreground">AI is responding…</span>
                         </div>
@@ -710,11 +711,11 @@ function AIAssistantPage() {
                       </div>
                     ) : (
                       /* No content yet → show subtle typing dots while waiting for first token */
-                      <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                      <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3.5 shadow-md shadow-black/[0.03]">
                         <div className="flex gap-1 items-center h-4">
-                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
                         </div>
                       </div>
                     )}
@@ -727,10 +728,10 @@ function AIAssistantPage() {
           </div>
 
           {/* ── Input area ── */}
-          <div className="shrink-0 border-t border-border bg-card/50 backdrop-blur-sm px-4 py-3">
+          <div className="shrink-0 border-t border-border bg-card/70 backdrop-blur-md px-4 py-3">
             <div className="max-w-3xl mx-auto">
-              <div className={`relative flex items-end gap-2 rounded-2xl border transition-all duration-150 bg-background ${
-                isStreaming ? "border-primary/30" : "border-border hover:border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
+              <div className={`relative flex items-end gap-2 rounded-2xl border transition-all duration-150 bg-background shadow-md shadow-black/[0.04] ${
+                isStreaming ? "border-primary/30" : "border-border hover:border-primary/30 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
               }`}>
                 <textarea
                   ref={inputRef}
@@ -780,19 +781,19 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
   return (
     <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
-      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
         isUser
-          ? "bg-primary text-primary-foreground"
-          : "bg-primary/10 border border-primary/20"
+          ? "bg-primary"
+          : "bg-primary"
       }`}>
         {isUser
-          ? <User className="h-4 w-4" />
-          : <Bot className="h-4 w-4 text-primary" />
+          ? <User className="h-4 w-4 text-primary-foreground" />
+          : <Bot className="h-4 w-4 text-primary-foreground" />
         }
       </div>
 
       {/* Bubble */}
-      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-md shadow-black/[0.04] ${
         isUser
           ? "bg-primary text-primary-foreground rounded-tr-sm"
           : "bg-card border border-border text-foreground rounded-tl-sm"
