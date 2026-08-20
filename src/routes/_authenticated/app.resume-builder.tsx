@@ -148,40 +148,30 @@ async function extractTextFromDocx(file: File): Promise<string> {
 // at `npm run build` time, and Render's dashboard env vars aren't passed
 // into the Docker build stage, so it always resolved to `undefined`).
 
-// ─── ATS-safe text sanitizer ──────────────────────────────────────────────────
+// --- ATS-safe text sanitizer ------------------------------------------------
 // Text extracted from a real-world PDF/DOCX (via pdf.js / mammoth) and then
-// rewritten by an LLM frequently carries characters standard PDF fonts and
-// ATS parsers both handle badly: ligatures ("ﬁ", "ﬂ") merged into a single
-// glyph the base-14 Helvetica font has no width metric for (which silently
-// breaks jsPDF's line-wrap math and is exactly what produced the distorted,
-// overflowing PDF), smart quotes/dashes, non-breaking spaces, bullets, etc.
-// Normalizing everything down to plain ASCII fixes the layout bug AND is
-// genuinely more ATS-friendly, since many parsers mis-read those characters.
+// rewritten by an LLM frequently carries characters ATS parsers handle badly:
+// ligatures ("fi", "fl") merged into a single glyph, smart quotes/dashes,
+// non-breaking spaces, stray bullets, etc. Normalizing everything down to
+// plain ASCII is genuinely more ATS-friendly, since many parsers mis-read
+// those characters even when the underlying PDF text itself renders fine.
 function sanitizeAtsText(input: string | undefined | null): string {
   if (!input) return "";
   return input
     .normalize("NFKD")
-    // Decompose common ligatures pdf.js sometimes extracts as one glyph (U+FB00-FB04)
     .replace(/\uFB00/g, "ff")
     .replace(/\uFB01/g, "fi")
     .replace(/\uFB02/g, "fl")
     .replace(/\uFB03/g, "ffi")
     .replace(/\uFB04/g, "ffl")
-    // Strip combining diacritical marks left behind by NFKD (e.g. e + acute -> e)
     .replace(/[\u0300-\u036f]/g, "")
-    // Normalize every Unicode space variant (NBSP, thin space, etc.) to a plain ASCII space
     .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF]/g, " ")
-    // Smart quotes -> straight ASCII quotes
     .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
     .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
-    // En/em dash -> hyphen, ellipsis -> three dots
     .replace(/[\u2013\u2014\u2015]/g, "-")
     .replace(/\u2026/g, "...")
-    // Other bullet glyph variants -> the one bullet char we actually use (U+2022)
     .replace(/[\u25CF\u25AA\u2023\u2043]/g, "\u2022")
-    // Drop zero-width/invisible characters entirely
     .replace(/[\u200B-\u200D\u2060]/g, "")
-    // Anything still outside printable ASCII (keep the bullet char we use) -> drop
     .replace(/[^\x20-\x7E\u2022\n]/g, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\r\n/g, "\n")
@@ -203,285 +193,169 @@ function sanitizeTailoredResume(data: TailoredResume): TailoredResume {
   return clean(data) as TailoredResume;
 }
 
-// ─── Stateful PDF Layout Engine (Zero-Overlap ATS Engine) ────────────────────
-const JSPDF_CDN =
-  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+// --- Print-based ATS PDF renderer ---------------------------------------------
+// Previous approach hand-positioned every glyph with jsPDF (splitTextToSize /
+// getTextWidth), which turned out to be unreliable in the actual browser
+// build well enough to keep producing overflowing, "distorted"-looking PDFs
+// even after tightening the wrap math around it -- the width measurement
+// primitive itself couldn't be trusted, so nothing built on top of it could
+// be either. Text layout is a solved problem in the browser's own rendering
+// engine (the same kind of engine that renders this correctly when pasted
+// into Claude or Word): render the resume as plain, single-column, real-text
+// HTML with a standard font, then hand it to the browser's native
+// print-to-PDF via window.print(). The output is genuine selectable text --
+// exactly what ATS parsers want -- laid out by a mature, battle-tested text
+// engine instead of ~200 lines of manual glyph-width math.
+const RESUME_PRINT_ROOT_ID = "acadsphere-resume-print-root";
 
-class PDFLayoutEngine {
-  doc: any;
-  pageWidth: number;
-  pageHeight: number;
-  marginX: number;
-  contentWidth: number;
-  y: number;
+function ResumePrintDocument({ data }: { data: TailoredResume | null }) {
+  if (!data) return null;
+  const clean = sanitizeTailoredResume(data);
+  const contactLine = [clean.header?.contact, clean.header?.links].filter(Boolean).join("  |  ");
 
-  marginBottom: number;
-
-  constructor(jsPDF: any) {
-    this.doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
-    this.pageWidth = 210;
-    this.pageHeight = 297;
-    this.marginX = 12; // 12mm standard ATS margins
-    this.marginBottom = 14;
-    this.contentWidth = this.pageWidth - this.marginX * 2; // 186mm
-    this.y = 12; // Current vertical position tracker
-  }
-
-  // Set Font and Styles easily
-  setFont(bold = false, italic = false, size = 9, color = [30, 41, 59]) {
-    let style = "normal";
-    if (bold && italic) style = "bolditalic";
-    else if (bold) style = "bold";
-    else if (italic) style = "italic";
-
-    this.doc.setFont("helvetica", style);
-    this.doc.setFontSize(size);
-    this.doc.setTextColor(color[0], color[1], color[2]);
-  }
-
-  // Self-measured, self-validated word wrap. Deliberately does NOT rely on
-  // jsPDF's own splitTextToSize() — real-world resume text (extracted from a
-  // PDF/DOCX and rewritten by an LLM) can contain characters the base-14
-  // Helvetica font's metric table has no entry for, which silently threw off
-  // splitTextToSize's width math and produced the overflowing, "stretched"
-  // looking PDF. Measuring every candidate line directly with getTextWidth()
-  // (the same primitive used to actually render it) guarantees a line never
-  // exceeds maxWidth, regardless of any such gap in the font metrics.
-  wrapText(text: string, maxWidth: number): string[] {
-    const safeWidth = Math.max(maxWidth, 15) * 0.97; // small safety margin
-    const words = (text || "").split(/\s+/).filter(Boolean);
-    if (words.length === 0) return [""];
-
-    const lines: string[] = [];
-    let current = "";
-
-    const breakLongWord = (word: string) => {
-      let chunk = "";
-      for (const ch of word) {
-        const test = chunk + ch;
-        if (this.doc.getTextWidth(test) > safeWidth && chunk) {
-          lines.push(chunk);
-          chunk = ch;
-        } else {
-          chunk = test;
+  return (
+    <div id={RESUME_PRINT_ROOT_ID}>
+      <style>{`
+        #${RESUME_PRINT_ROOT_ID} { display: none; }
+        @media print {
+          @page { size: A4; margin: 14mm 15mm; }
+          html, body { background: #fff !important; }
+          body * { visibility: hidden !important; }
+          #${RESUME_PRINT_ROOT_ID}, #${RESUME_PRINT_ROOT_ID} * { visibility: visible !important; }
+          #${RESUME_PRINT_ROOT_ID} {
+            display: block !important;
+            position: absolute; top: 0; left: 0; width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111827;
+            font-size: 10pt;
+            line-height: 1.42;
+          }
+          #${RESUME_PRINT_ROOT_ID} h1 { font-size: 18pt; font-weight: 700; margin: 0 0 2pt; color: #0f172a; }
+          #${RESUME_PRINT_ROOT_ID} .rp-contact { font-size: 9pt; color: #475569; margin: 0 0 8pt; }
+          #${RESUME_PRINT_ROOT_ID} h2 {
+            font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
+            margin: 10pt 0 3pt; padding-bottom: 2pt; border-bottom: 0.75pt solid #cbd5e1; color: #0f172a;
+          }
+          #${RESUME_PRINT_ROOT_ID} .rp-row-head {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 8pt;
+            font-weight: 700; font-size: 10pt; color: #0f172a; margin-top: 6pt;
+          }
+          #${RESUME_PRINT_ROOT_ID} .rp-row-date { font-weight: 400; font-style: italic; font-size: 9pt; color: #475569; white-space: nowrap; }
+          #${RESUME_PRINT_ROOT_ID} ul { margin: 2pt 0 0; padding-left: 12pt; }
+          #${RESUME_PRINT_ROOT_ID} li { margin: 1.5pt 0; }
+          #${RESUME_PRINT_ROOT_ID} p { margin: 2pt 0; }
+          #${RESUME_PRINT_ROOT_ID} .rp-skill-line { margin: 2pt 0; }
+          #${RESUME_PRINT_ROOT_ID} .rp-skill-cat { font-weight: 700; }
+          #${RESUME_PRINT_ROOT_ID} .rp-details { font-size: 9pt; font-style: italic; color: #475569; margin: 1pt 0 0; }
         }
-      }
-      return chunk;
-    };
+      `}</style>
 
-    for (const word of words) {
-      const candidate = current ? `${current} ${word}` : word;
-      if (this.doc.getTextWidth(candidate) <= safeWidth) {
-        current = candidate;
-        continue;
-      }
-      if (current) {
-        lines.push(current);
-        current = "";
-      }
-      if (this.doc.getTextWidth(word) <= safeWidth) {
-        current = word;
-      } else {
-        current = breakLongWord(word);
-      }
-    }
-    if (current) lines.push(current);
-    return lines.length ? lines : [""];
-  }
+      <h1>{clean.header?.fullName || "Candidate Name"}</h1>
+      {contactLine && <p className="rp-contact">{contactLine}</p>}
 
-  // Start a new page and reset the vertical cursor if the given amount of
-  // content wouldn't fit on the remainder of the current page. Keeps the
-  // "1-page" design intact for typical resumes while never silently
-  // truncating content that genuinely needs a second page.
-  ensureSpace(neededHeight: number) {
-    if (this.y + neededHeight > this.pageHeight - this.marginBottom) {
-      this.doc.addPage();
-      this.y = this.marginX;
-    }
-  }
+      {clean.summary && (
+        <>
+          <h2>Professional Summary</h2>
+          <p>{clean.summary}</p>
+        </>
+      )}
 
-  // Draw Section Header with Horizontal Rule
-  addSectionHeader(title: string) {
-    this.ensureSpace(12);
-    this.y += 3;
-    this.setFont(true, false, 10, [15, 23, 42]);
-    this.doc.text(title.toUpperCase(), this.marginX, this.y);
+      {clean.skills && Object.keys(clean.skills).length > 0 && (
+        <>
+          <h2>Technical Skills</h2>
+          {Object.entries(clean.skills).map(([category, items]) => (
+            <p className="rp-skill-line" key={category}>
+              <span className="rp-skill-cat">{category}: </span>
+              {String(items)}
+            </p>
+          ))}
+        </>
+      )}
 
-    this.y += 1.5;
-    this.doc.setDrawColor(203, 213, 225);
-    this.doc.setLineWidth(0.3);
-    this.doc.line(this.marginX, this.y, this.pageWidth - this.marginX, this.y);
-    this.y += 4;
-  }
+      {clean.experience && clean.experience.length > 0 && (
+        <>
+          <h2>Work Experience</h2>
+          {clean.experience.map((exp, i) => (
+            <div key={i}>
+              <div className="rp-row-head">
+                <span>{[exp.company, exp.role].filter(Boolean).join(" \u2014 ")}</span>
+                <span className="rp-row-date">{exp.period}</span>
+              </div>
+              {exp.bullets && exp.bullets.length > 0 && (
+                <ul>
+                  {exp.bullets.map((b, bi) => <li key={bi}>{b}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
+        </>
+      )}
 
-  // Add Two-Column Header Row (Left Title, Right Date/Location) without Collision
-  addHeaderRow(leftText: string, rightText: string = "", isBold = true) {
-    this.setFont(isBold, false, 9.5, [15, 23, 42]);
+      {clean.projects && clean.projects.length > 0 && (
+        <>
+          <h2>Key Projects</h2>
+          {clean.projects.map((proj, i) => (
+            <div key={i}>
+              <div className="rp-row-head">
+                <span>{proj.tech ? `${proj.name} | ${proj.tech}` : proj.name}</span>
+                <span className="rp-row-date">{proj.period}</span>
+              </div>
+              {proj.bullets && proj.bullets.length > 0 && (
+                <ul>
+                  {proj.bullets.map((b, bi) => <li key={bi}>{b}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
+        </>
+      )}
 
-    const rightWidth = rightText ? this.doc.getTextWidth(rightText) : 0;
-    const maxLeftWidth = this.contentWidth - rightWidth - (rightText ? 4 : 0); // Leave 4mm safety gap if right text exists
-
-    // Wrap left text if it's too long so it NEVER overlaps right text
-    const splitLeft = this.wrapText(leftText, Math.max(maxLeftWidth, 50));
-    this.ensureSpace(splitLeft.length * 4 + 2);
-
-    // Print Left Text
-    this.doc.text(splitLeft, this.marginX, this.y);
-
-    // Print Right Text on first line
-    if (rightText) {
-      this.setFont(false, true, 9, [71, 85, 105]);
-      this.doc.text(rightText, this.pageWidth - this.marginX, this.y, {
-        align: "right",
-      });
-    }
-
-    // Safely increment Y based on wrapped lines
-    this.y += splitLeft.length * 4;
-  }
-
-  // Add Wrapped Bullet Points with Dynamic Line Height Calculation
-  addBulletPoint(text: string) {
-    this.setFont(false, false, 8.5, [51, 65, 85]);
-    const bulletPrefix = "•  ";
-    const indent = 4;
-    const availableWidth = this.contentWidth - indent;
-
-    const splitText = this.wrapText(text, availableWidth);
-    this.ensureSpace(splitText.length * 3.4 + 2);
-
-    // Print bullet symbol
-    this.doc.text(bulletPrefix, this.marginX + 1, this.y);
-
-    // Print text lines
-    this.doc.text(splitText, this.marginX + indent, this.y);
-
-    // Increment Y dynamically based on exact line count (3.4mm per line)
-    this.y += splitText.length * 3.4 + 1;
-  }
-
-  // Add Inline Key-Value Pair (e.g. "Frontend: React, Tailwind")
-  addInlineCategory(category: string, items: string) {
-    this.setFont(true, false, 8.5, [15, 23, 42]);
-    const catText = `${category}: `;
-    const catWidth = this.doc.getTextWidth(catText);
-
-    this.setFont(false, false, 8.5, [51, 65, 85]);
-    const splitItems = this.wrapText(items, this.contentWidth - catWidth);
-    this.ensureSpace(splitItems.length * 3.6 + 2);
-
-    this.setFont(true, false, 8.5, [15, 23, 42]);
-    this.doc.text(catText, this.marginX, this.y);
-
-    this.setFont(false, false, 8.5, [51, 65, 85]);
-    // If items wrap to multiple lines, indent secondary lines properly
-    this.doc.text(splitItems, this.marginX + catWidth, this.y);
-    this.y += splitItems.length * 3.6 + 1;
-  }
-
-  // Save the PDF with Clean Filename
-  save(filename: string) {
-    const cleanName = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
-    this.doc.save(cleanName);
-  }
+      {((clean.education && clean.education.length > 0) || (clean.certifications && clean.certifications.length > 0)) && (
+        <>
+          <h2>Education &amp; Certifications</h2>
+          {(clean.education || []).map((edu, i) => (
+            <div key={i}>
+              <div className="rp-row-head">
+                <span>{[edu.degree, edu.institution].filter(Boolean).join(" \u2014 ")}</span>
+                <span className="rp-row-date">{edu.period}</span>
+              </div>
+              {edu.details && <p className="rp-details">{edu.details}</p>}
+            </div>
+          ))}
+          {clean.certifications && clean.certifications.length > 0 && (
+            <p className="rp-skill-line">
+              <span className="rp-skill-cat">Certifications: </span>
+              {clean.certifications.join(" \u2022 ")}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
-export const generateATSResume = async (rawData: TailoredResume): Promise<void> => {
-  await loadScript(JSPDF_CDN, "jspdf");
-  const { jsPDF } = (window as any).jspdf;
-
-  // Normalize every field to plain ASCII before any layout math touches it —
-  // see sanitizeAtsText() above for why this matters.
-  const data = sanitizeTailoredResume(rawData);
-
-  const engine = new PDFLayoutEngine(jsPDF);
-
-  // 1. HEADER
-  engine.setFont(true, false, 18, [15, 23, 42]);
-  engine.doc.text(data.header?.fullName || "Candidate Name", engine.marginX, engine.y);
-  engine.y += 5;
-
-  engine.setFont(false, false, 8.5, [71, 85, 105]);
-  const contactLine = [data.header?.contact, data.header?.links]
-    .filter(Boolean)
-    .join("  |  ");
-  const splitContact = engine.wrapText(contactLine, engine.contentWidth);
-  engine.doc.text(splitContact, engine.marginX, engine.y);
-  engine.y += splitContact.length * 3.8 + 2;
-
-  // 2. PROFESSIONAL SUMMARY
-  if (data.summary) {
-    engine.addSectionHeader("Professional Summary");
-    engine.setFont(false, false, 8.5, [51, 65, 85]);
-    const splitSummary = engine.wrapText(data.summary, engine.contentWidth);
-    engine.ensureSpace(splitSummary.length * 3.6 + 2);
-    engine.doc.text(splitSummary, engine.marginX, engine.y);
-    engine.y += splitSummary.length * 3.6 + 2;
-  }
-
-  // 3. TECHNICAL SKILLS
-  if (data.skills && Object.keys(data.skills).length > 0) {
-    engine.addSectionHeader("Technical Skills");
-    Object.entries(data.skills).forEach(([category, skillsList]) => {
-      engine.addInlineCategory(category, skillsList);
-    });
-    engine.y += 1;
-  }
-
-  // 4. WORK EXPERIENCE
-  if (data.experience && data.experience.length > 0) {
-    engine.addSectionHeader("Work Experience");
-    data.experience.forEach((exp) => {
-      const expTitle = `${exp.company || ""}${exp.company && exp.role ? " — " : ""}${exp.role || ""}`;
-      engine.addHeaderRow(expTitle, exp.period || "");
-      (exp.bullets || []).forEach((bullet) => engine.addBulletPoint(bullet));
-      engine.y += 1.5;
-    });
-  }
-
-  // 5. KEY PROJECTS
-  if (data.projects && data.projects.length > 0) {
-    engine.addSectionHeader("Key Projects");
-    data.projects.forEach((proj) => {
-      const projTitle = proj.tech ? `${proj.name} | ${proj.tech}` : proj.name;
-      engine.addHeaderRow(projTitle, proj.period || "");
-      (proj.bullets || []).forEach((bullet) => engine.addBulletPoint(bullet));
-      engine.y += 1.5;
-    });
-  }
-
-  // 6. EDUCATION & CERTIFICATIONS
-  if (
-    (data.education && data.education.length > 0) ||
-    (data.certifications && data.certifications.length > 0)
-  ) {
-    engine.addSectionHeader("Education & Certifications");
-    (data.education || []).forEach((edu) => {
-      const eduText = `${edu.degree || ""}${edu.degree && edu.institution ? " — " : ""}${edu.institution || ""}`;
-      engine.addHeaderRow(eduText, edu.period || "");
-      if (edu.details) {
-        engine.setFont(false, true, 8, [100, 116, 139]);
-        const splitDetails = engine.wrapText(edu.details, engine.contentWidth);
-        engine.ensureSpace(splitDetails.length * 3.5 + 1);
-        engine.doc.text(splitDetails, engine.marginX, engine.y);
-        engine.y += splitDetails.length * 3.5;
-      }
-    });
-
-    if (data.certifications && data.certifications.length > 0) {
-      if (data.education && data.education.length > 0) engine.y += 1;
-      const certList = data.certifications.join(" • ");
-      engine.addInlineCategory("Certifications", certList);
-    }
-  }
-
-  // Save Document
-  engine.save(data.customFilename || "Roy_Mathew_Tailored_Resume");
-};
+// Renders ResumePrintDocument into the hidden print root and triggers the
+// browser's native print dialog. document.title is used by Chrome as the
+// default "Save As" filename, so it's set to the tailored filename for the
+// duration of the print flow.
+function triggerResumePrint(filename: string) {
+  const cleanName = (filename || "Tailored_Resume").replace(/\.pdf$/i, "");
+  const prevTitle = document.title;
+  document.title = cleanName;
+  const restore = () => {
+    document.title = prevTitle;
+    window.removeEventListener("afterprint", restore);
+  };
+  window.addEventListener("afterprint", restore);
+  // Give the (already-rendered, just-unhidden-by-CSS) print root a frame to
+  // settle before invoking print.
+  requestAnimationFrame(() => {
+    window.print();
+    // Some browsers (older Safari) don't fire afterprint reliably -- restore
+    // the title on a timeout as a fallback too.
+    setTimeout(restore, 2000);
+  });
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function ResumeTailorerPage() {
@@ -584,14 +458,14 @@ function ResumeTailorerPage() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!tailoredResume) return;
     setIsDownloading(true);
     try {
-      await generateATSResume(tailoredResume);
-      toast.success(`Downloaded: ${tailoredResume.customFilename || "Resume"}.pdf`);
+      triggerResumePrint(tailoredResume.customFilename || "Tailored_Resume");
+      toast.success("Opening print dialog — choose \"Save as PDF\" to download.");
     } catch (err: any) {
-      toast.error("PDF generation failed: " + err.message);
+      toast.error("Could not open the print dialog: " + err.message);
     } finally {
       setIsDownloading(false);
     }
@@ -612,14 +486,15 @@ function ResumeTailorerPage() {
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Powered by Gemini 3.6 Flash · PDFLayoutEngine (Zero Overlap ATS)
+              Powered by Groq AI · Real Job-Description-Driven Tailoring
             </div>
             <h1 className="font-display text-4xl font-extrabold tracking-tight text-gradient sm:text-5xl">
               AI Resume Tailorer
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Upload your PDF, DOCX, or DOC resume, paste the target job description, and let Gemini 3.6 Flash
-              optimize your summary, skills, experience, and projects for ATS compatibility — then download a pristine, high-density 1-page PDF.
+              Upload your PDF, DOCX, or DOC resume, paste the target job description, and the AI reorders and
+              rewords your summary, skills, experience, and projects around what that job actually asks for —
+              then hand off a clean, real-text ATS-friendly PDF via your browser's own print engine.
             </p>
             <div className="mt-8 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
               {[
@@ -810,7 +685,7 @@ function ResumeTailorerPage() {
                 {isTailoring ? (
                   <>
                     <Spinner className="mr-2 h-4 w-4" />
-                    Tailoring Resume with Gemini 3.6 Flash...
+                    Tailoring Resume with AI...
                   </>
                 ) : (
                   <>
@@ -847,7 +722,7 @@ function ResumeTailorerPage() {
                   </div>
                   <div>
                     <p className="font-display font-semibold text-foreground">
-                      Gemini 3.6 Flash is optimizing...
+                      AI is optimizing...
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Retaining projects & links · Weaving ATS keywords · Formatting zero-overlap 1-page layout
@@ -1129,7 +1004,7 @@ function ResumeTailorerPage() {
                         {isDownloading ? (
                           <>
                             <Spinner className="h-4 w-4" />
-                            Generating PDF...
+                            Opening print dialog...
                           </>
                         ) : (
                           <>
@@ -1146,6 +1021,8 @@ function ResumeTailorerPage() {
           </div>
         </div>
       </div>
+      {/* Hidden except during printing — see ResumePrintDocument for why. */}
+      <ResumePrintDocument data={tailoredResume} />
     </ChatLayout>
   );
 }

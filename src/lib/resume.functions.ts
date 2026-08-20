@@ -243,15 +243,44 @@ export const tailorResume = createServerFn({ method: "POST" })
       throw new Error("No AI provider is configured on the server. Set GROQ_API_KEY (or OPENAI_API_KEY / GEMINI_API_KEY) in the environment.");
     }
 
-    const prompt = `You are an elite Executive Resume Strategist and ATS Specialist.
-Your task is to analyze the user's ORIGINAL RESUME and target JOB DESCRIPTION, then produce an upgraded, highly tailored, ATS-optimized JSON payload.
+    const prompt = `You are an elite Executive Resume Strategist and ATS Specialist. You do real,
+job-description-driven tailoring — not generic rephrasing. Follow this process before writing
+anything:
+
+STEP 1 — ANALYZE THE JOB DESCRIPTION FIRST.
+Extract, explicitly and silently to yourself: the target job title / seniority, the 8-15 hard
+skills, tools, and technologies it names or clearly implies, its domain (e.g. fintech, ML infra,
+frontend-heavy, backend/data-heavy), and what it emphasizes most (e.g. scale, leadership,
+specific frameworks, security, performance). If the job description is extremely short or vague
+(a couple of words, e.g. just a job title), infer standard expectations for that specific title
+and be conservative — do not invent employer-specific requirements that weren't stated.
+
+STEP 2 — MATCH AGAINST THE RESUME.
+Identify which of the resume's actual skills, tools, projects, and experience bullets already
+overlap with what you extracted in Step 1. These are what you lead with and word using the JD's
+own terminology. Anything in the resume that is NOT relevant to this JD should still be
+included (never delete real experience) but de-prioritized — reordered later in each list,
+described more briefly, phrased more generically.
+
+STEP 3 — WRITE THE TAILORED CONTENT.
+- The summary must explicitly reflect the JD's target role/domain in its first sentence and use
+  at least 3-5 of the JD's own keywords/phrases, grounded only in things the candidate actually
+  has evidence of doing.
+- Reorder skills categories and the items within them so JD-relevant skills come first.
+- Reorder work experience and project bullets within each entry so the most JD-relevant bullets
+  come first; rewrite bullets to surface JD-matching keywords and technologies where the
+  underlying fact genuinely supports it — never invent a technology, metric, or outcome that
+  isn't grounded in the original resume text.
+- Two tailoring runs on the SAME resume with DIFFERENT job descriptions must produce visibly
+  different summaries, skill ordering, and bullet emphasis — if your output would look nearly
+  identical regardless of which JD was given, you have not done Step 1 and Step 2 correctly.
 
 CRITICAL RULES:
-1. DO NOT STRIP CONTENT: Retain all high-impact technical details, metrics, frameworks, projects, live URLs, GitHub, personal portfolio link, and certifications from the original resume.
+1. DO NOT STRIP CONTENT: Retain all high-impact technical details, metrics, frameworks, projects, live URLs, GitHub, personal portfolio link, and certifications from the original resume — reorder/de-emphasize the JD-irrelevant parts, never delete them.
 2. ATS KEYWORD INTEGRATION: Seamlessly weave keywords and skills from the Job Description into the Professional Summary, Experience bullet points, and Projects without lying or degrading technical depth.
 3. CONCISE IMPACT BULLETS: Keep bullet points punchy and action-oriented using strong verbs (e.g., "Architected", "Integrated", "Optimized").
-4. FILE NAMING: Generate a custom, clean filename (e.g., "First_Last_Target_Role_Resume") derived from the resume's own header, never a placeholder person.
-5. Use ONLY facts present in the original resume — never invent a name, employer, project, or credential that isn't there.
+4. FILE NAMING: Generate a custom, clean filename (e.g., "First_Last_Target_Role_Resume") derived from the resume's own header and the JD's target role, never a placeholder person.
+5. Use ONLY facts present in the original resume — never invent a name, employer, project, credential, technology, or metric that isn't there. Tailoring means re-emphasis and rewording, not fabrication.
 
 RESUME TEXT:
 ${data.resumeText}
