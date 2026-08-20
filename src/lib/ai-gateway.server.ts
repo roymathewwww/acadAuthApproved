@@ -4,10 +4,12 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
  * Returns a Vercel AI SDK-compatible model instance using Groq API.
  * Uses Groq's high-speed OpenAI-compatible REST endpoint.
  *
- * Primary Model: llama-3.3-70b-versatile (ultra fast, high intelligence)
+ * Primary Model: openai/gpt-oss-120b (Groq has retired the llama-3.x line;
+ * this is the current highest-quality general-purpose chat model available
+ * on the Groq API as of Aug 2026 — verified live against /v1/models).
  * Reads GROQ_API_KEY from the environment (set in .env.local).
  */
-export function getAiModel(modelName: string = "llama-3.3-70b-versatile") {
+export function getAiModel(modelName: string = "openai/gpt-oss-120b") {
   // 1. Resolve Groq Key (handle direct, split P1/P2, and unexpanded ${...} strings from Render)
   let groqKey = process.env.GROQ_API_KEY?.trim();
   if (!groqKey || groqKey.includes("${") || groqKey.startsWith('"') || groqKey.startsWith("'")) {
@@ -114,5 +116,5 @@ export function getAiModelWithCustomKey(
     baseURL: "https://api.groq.com/openai/v1",
     apiKey: customKey,
   });
-  return p("llama-3.3-70b-versatile");
+  return p("openai/gpt-oss-120b");
 }

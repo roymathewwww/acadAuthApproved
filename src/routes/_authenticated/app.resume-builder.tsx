@@ -189,7 +189,7 @@ RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA:
       "period": "2026",
       "bullets": [
         "Built a real-time voice-AI calling SaaS platform (Next.js/React, FastAPI) with sub-600ms latency using Pipecat streaming and WebSockets.",
-        "Integrated multi-provider STT/TTS fallback (Groq, Deepgram, Cartesia) and Groq Llama 3.3 LLM layer with Twilio telephony.",
+        "Integrated multi-provider STT/TTS fallback (Groq, Deepgram, Cartesia) and Groq GPT-OSS 120B LLM layer with Twilio telephony.",
         "Designed SQLite-backed multi-tenant schema for campaign analytics and lead management."
       ]
     }

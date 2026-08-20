@@ -633,7 +633,7 @@ function AIAssistantPage() {
               </span>
             </div>
             <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
-              Groq · Llama 3.3
+              Groq · GPT-OSS 120B
             </span>
           </div>
 
