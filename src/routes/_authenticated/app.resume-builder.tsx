@@ -148,6 +148,61 @@ async function extractTextFromDocx(file: File): Promise<string> {
 // at `npm run build` time, and Render's dashboard env vars aren't passed
 // into the Docker build stage, so it always resolved to `undefined`).
 
+// ─── ATS-safe text sanitizer ──────────────────────────────────────────────────
+// Text extracted from a real-world PDF/DOCX (via pdf.js / mammoth) and then
+// rewritten by an LLM frequently carries characters standard PDF fonts and
+// ATS parsers both handle badly: ligatures ("ﬁ", "ﬂ") merged into a single
+// glyph the base-14 Helvetica font has no width metric for (which silently
+// breaks jsPDF's line-wrap math and is exactly what produced the distorted,
+// overflowing PDF), smart quotes/dashes, non-breaking spaces, bullets, etc.
+// Normalizing everything down to plain ASCII fixes the layout bug AND is
+// genuinely more ATS-friendly, since many parsers mis-read those characters.
+function sanitizeAtsText(input: string | undefined | null): string {
+  if (!input) return "";
+  return input
+    .normalize("NFKD")
+    // Decompose common ligatures pdf.js sometimes extracts as one glyph (U+FB00-FB04)
+    .replace(/\uFB00/g, "ff")
+    .replace(/\uFB01/g, "fi")
+    .replace(/\uFB02/g, "fl")
+    .replace(/\uFB03/g, "ffi")
+    .replace(/\uFB04/g, "ffl")
+    // Strip combining diacritical marks left behind by NFKD (e.g. e + acute -> e)
+    .replace(/[\u0300-\u036f]/g, "")
+    // Normalize every Unicode space variant (NBSP, thin space, etc.) to a plain ASCII space
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF]/g, " ")
+    // Smart quotes -> straight ASCII quotes
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    // En/em dash -> hyphen, ellipsis -> three dots
+    .replace(/[\u2013\u2014\u2015]/g, "-")
+    .replace(/\u2026/g, "...")
+    // Other bullet glyph variants -> the one bullet char we actually use (U+2022)
+    .replace(/[\u25CF\u25AA\u2023\u2043]/g, "\u2022")
+    // Drop zero-width/invisible characters entirely
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    // Anything still outside printable ASCII (keep the bullet char we use) -> drop
+    .replace(/[^\x20-\x7E\u2022\n]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\r\n/g, "\n")
+    .trim();
+}
+
+// Recursively sanitize every string field of the tailored resume payload
+function sanitizeTailoredResume(data: TailoredResume): TailoredResume {
+  const clean = (v: any): any => {
+    if (typeof v === "string") return sanitizeAtsText(v);
+    if (Array.isArray(v)) return v.map(clean);
+    if (v && typeof v === "object") {
+      const out: any = {};
+      for (const k of Object.keys(v)) out[k] = clean(v[k]);
+      return out;
+    }
+    return v;
+  };
+  return clean(data) as TailoredResume;
+}
+
 // ─── Stateful PDF Layout Engine (Zero-Overlap ATS Engine) ────────────────────
 const JSPDF_CDN =
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -160,6 +215,8 @@ class PDFLayoutEngine {
   contentWidth: number;
   y: number;
 
+  marginBottom: number;
+
   constructor(jsPDF: any) {
     this.doc = new jsPDF({
       orientation: "portrait",
@@ -169,6 +226,7 @@ class PDFLayoutEngine {
     this.pageWidth = 210;
     this.pageHeight = 297;
     this.marginX = 12; // 12mm standard ATS margins
+    this.marginBottom = 14;
     this.contentWidth = this.pageWidth - this.marginX * 2; // 186mm
     this.y = 12; // Current vertical position tracker
   }
@@ -185,8 +243,70 @@ class PDFLayoutEngine {
     this.doc.setTextColor(color[0], color[1], color[2]);
   }
 
+  // Self-measured, self-validated word wrap. Deliberately does NOT rely on
+  // jsPDF's own splitTextToSize() — real-world resume text (extracted from a
+  // PDF/DOCX and rewritten by an LLM) can contain characters the base-14
+  // Helvetica font's metric table has no entry for, which silently threw off
+  // splitTextToSize's width math and produced the overflowing, "stretched"
+  // looking PDF. Measuring every candidate line directly with getTextWidth()
+  // (the same primitive used to actually render it) guarantees a line never
+  // exceeds maxWidth, regardless of any such gap in the font metrics.
+  wrapText(text: string, maxWidth: number): string[] {
+    const safeWidth = Math.max(maxWidth, 15) * 0.97; // small safety margin
+    const words = (text || "").split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [""];
+
+    const lines: string[] = [];
+    let current = "";
+
+    const breakLongWord = (word: string) => {
+      let chunk = "";
+      for (const ch of word) {
+        const test = chunk + ch;
+        if (this.doc.getTextWidth(test) > safeWidth && chunk) {
+          lines.push(chunk);
+          chunk = ch;
+        } else {
+          chunk = test;
+        }
+      }
+      return chunk;
+    };
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (this.doc.getTextWidth(candidate) <= safeWidth) {
+        current = candidate;
+        continue;
+      }
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      if (this.doc.getTextWidth(word) <= safeWidth) {
+        current = word;
+      } else {
+        current = breakLongWord(word);
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [""];
+  }
+
+  // Start a new page and reset the vertical cursor if the given amount of
+  // content wouldn't fit on the remainder of the current page. Keeps the
+  // "1-page" design intact for typical resumes while never silently
+  // truncating content that genuinely needs a second page.
+  ensureSpace(neededHeight: number) {
+    if (this.y + neededHeight > this.pageHeight - this.marginBottom) {
+      this.doc.addPage();
+      this.y = this.marginX;
+    }
+  }
+
   // Draw Section Header with Horizontal Rule
   addSectionHeader(title: string) {
+    this.ensureSpace(12);
     this.y += 3;
     this.setFont(true, false, 10, [15, 23, 42]);
     this.doc.text(title.toUpperCase(), this.marginX, this.y);
@@ -206,7 +326,8 @@ class PDFLayoutEngine {
     const maxLeftWidth = this.contentWidth - rightWidth - (rightText ? 4 : 0); // Leave 4mm safety gap if right text exists
 
     // Wrap left text if it's too long so it NEVER overlaps right text
-    const splitLeft = this.doc.splitTextToSize(leftText, Math.max(maxLeftWidth, 50));
+    const splitLeft = this.wrapText(leftText, Math.max(maxLeftWidth, 50));
+    this.ensureSpace(splitLeft.length * 4 + 2);
 
     // Print Left Text
     this.doc.text(splitLeft, this.marginX, this.y);
@@ -230,7 +351,8 @@ class PDFLayoutEngine {
     const indent = 4;
     const availableWidth = this.contentWidth - indent;
 
-    const splitText = this.doc.splitTextToSize(text, availableWidth);
+    const splitText = this.wrapText(text, availableWidth);
+    this.ensureSpace(splitText.length * 3.4 + 2);
 
     // Print bullet symbol
     this.doc.text(bulletPrefix, this.marginX + 1, this.y);
@@ -248,14 +370,14 @@ class PDFLayoutEngine {
     const catText = `${category}: `;
     const catWidth = this.doc.getTextWidth(catText);
 
+    this.setFont(false, false, 8.5, [51, 65, 85]);
+    const splitItems = this.wrapText(items, this.contentWidth - catWidth);
+    this.ensureSpace(splitItems.length * 3.6 + 2);
+
+    this.setFont(true, false, 8.5, [15, 23, 42]);
     this.doc.text(catText, this.marginX, this.y);
 
     this.setFont(false, false, 8.5, [51, 65, 85]);
-    const splitItems = this.doc.splitTextToSize(
-      items,
-      this.contentWidth - catWidth,
-    );
-
     // If items wrap to multiple lines, indent secondary lines properly
     this.doc.text(splitItems, this.marginX + catWidth, this.y);
     this.y += splitItems.length * 3.6 + 1;
@@ -268,9 +390,13 @@ class PDFLayoutEngine {
   }
 }
 
-export const generateATSResume = async (data: TailoredResume): Promise<void> => {
+export const generateATSResume = async (rawData: TailoredResume): Promise<void> => {
   await loadScript(JSPDF_CDN, "jspdf");
   const { jsPDF } = (window as any).jspdf;
+
+  // Normalize every field to plain ASCII before any layout math touches it —
+  // see sanitizeAtsText() above for why this matters.
+  const data = sanitizeTailoredResume(rawData);
 
   const engine = new PDFLayoutEngine(jsPDF);
 
@@ -283,17 +409,16 @@ export const generateATSResume = async (data: TailoredResume): Promise<void> => 
   const contactLine = [data.header?.contact, data.header?.links]
     .filter(Boolean)
     .join("  |  ");
-  engine.doc.text(contactLine, engine.marginX, engine.y);
-  engine.y += 6;
+  const splitContact = engine.wrapText(contactLine, engine.contentWidth);
+  engine.doc.text(splitContact, engine.marginX, engine.y);
+  engine.y += splitContact.length * 3.8 + 2;
 
   // 2. PROFESSIONAL SUMMARY
   if (data.summary) {
     engine.addSectionHeader("Professional Summary");
     engine.setFont(false, false, 8.5, [51, 65, 85]);
-    const splitSummary = engine.doc.splitTextToSize(
-      data.summary,
-      engine.contentWidth,
-    );
+    const splitSummary = engine.wrapText(data.summary, engine.contentWidth);
+    engine.ensureSpace(splitSummary.length * 3.6 + 2);
     engine.doc.text(splitSummary, engine.marginX, engine.y);
     engine.y += splitSummary.length * 3.6 + 2;
   }
@@ -340,8 +465,10 @@ export const generateATSResume = async (data: TailoredResume): Promise<void> => 
       engine.addHeaderRow(eduText, edu.period || "");
       if (edu.details) {
         engine.setFont(false, true, 8, [100, 116, 139]);
-        engine.doc.text(edu.details, engine.marginX, engine.y);
-        engine.y += 3.5;
+        const splitDetails = engine.wrapText(edu.details, engine.contentWidth);
+        engine.ensureSpace(splitDetails.length * 3.5 + 1);
+        engine.doc.text(splitDetails, engine.marginX, engine.y);
+        engine.y += splitDetails.length * 3.5;
       }
     });
 
