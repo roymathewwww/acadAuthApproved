@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { tailorResume } from "@/lib/resume.functions";
+import { tailorResume, getTailoredResumePdf } from "@/lib/resume.functions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,6 +103,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
   const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
 
   const textChunks: string[] = [];
+  const links = new Set<string>();
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
@@ -110,8 +111,26 @@ async function extractTextFromPDF(file: File): Promise<string> {
       .map((item: any) => ("str" in item ? item.str : ""))
       .join(" ");
     textChunks.push(pageText);
+
+    // pdf.js text extraction only returns visible text, not hyperlink
+    // targets — a resume with "LinkedIn"/"GitHub" as clickable display text
+    // loses the actual URL entirely unless we also read link annotations.
+    try {
+      const annotations = await page.getAnnotations();
+      for (const a of annotations) {
+        if (a?.subtype === "Link" && typeof a.url === "string" && a.url) {
+          links.add(a.url);
+        }
+      }
+    } catch {
+      // annotations are a best-effort enhancement; ignore failures
+    }
   }
-  return textChunks.join("\n\n").trim();
+  let result = textChunks.join("\n\n").trim();
+  if (links.size > 0) {
+    result += `\n\n[Detected hyperlinks in original document: ${Array.from(links).join(", ")}]`;
+  }
+  return result;
 }
 
 // ─── DOCX / DOC Text extraction via Mammoth CDN ─────────────────────────────
@@ -126,7 +145,27 @@ async function extractTextFromDocx(file: File): Promise<string> {
     if (mammoth) {
       const result = await mammoth.extractRawText({ arrayBuffer });
       if (result?.value && result.value.trim().length > 20) {
-        return result.value.trim();
+        let text = result.value.trim();
+
+        // extractRawText() drops hyperlinks (a resume's "LinkedIn"/"GitHub"
+        // display text loses its real URL) — convertToHtml() keeps them as
+        // real <a href> tags, so pull the URLs from that pass separately.
+        try {
+          const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+          const hrefs = new Set<string>();
+          const re = /href="([^"]+)"/g;
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(htmlResult?.value || "")) !== null) {
+            if (m[1] && !m[1].startsWith("#")) hrefs.add(m[1]);
+          }
+          if (hrefs.size > 0) {
+            text += `\n\n[Detected hyperlinks in original document: ${Array.from(hrefs).join(", ")}]`;
+          }
+        } catch {
+          // best-effort; the plain text extraction above already succeeded
+        }
+
+        return text;
       }
     }
   } catch (e) {
@@ -148,218 +187,10 @@ async function extractTextFromDocx(file: File): Promise<string> {
 // at `npm run build` time, and Render's dashboard env vars aren't passed
 // into the Docker build stage, so it always resolved to `undefined`).
 
-// --- ATS-safe text sanitizer ------------------------------------------------
-// Text extracted from a real-world PDF/DOCX (via pdf.js / mammoth) and then
-// rewritten by an LLM frequently carries characters ATS parsers handle badly:
-// ligatures ("fi", "fl") merged into a single glyph, smart quotes/dashes,
-// non-breaking spaces, stray bullets, etc. Normalizing everything down to
-// plain ASCII is genuinely more ATS-friendly, since many parsers mis-read
-// those characters even when the underlying PDF text itself renders fine.
-function sanitizeAtsText(input: string | undefined | null): string {
-  if (!input) return "";
-  return input
-    .normalize("NFKD")
-    .replace(/\uFB00/g, "ff")
-    .replace(/\uFB01/g, "fi")
-    .replace(/\uFB02/g, "fl")
-    .replace(/\uFB03/g, "ffi")
-    .replace(/\uFB04/g, "ffl")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF]/g, " ")
-    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
-    .replace(/[\u2013\u2014\u2015]/g, "-")
-    .replace(/\u2026/g, "...")
-    .replace(/[\u25CF\u25AA\u2023\u2043]/g, "\u2022")
-    .replace(/[\u200B-\u200D\u2060]/g, "")
-    .replace(/[^\x20-\x7E\u2022\n]/g, "")
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/\r\n/g, "\n")
-    .trim();
-}
-
-// Recursively sanitize every string field of the tailored resume payload
-function sanitizeTailoredResume(data: TailoredResume): TailoredResume {
-  const clean = (v: any): any => {
-    if (typeof v === "string") return sanitizeAtsText(v);
-    if (Array.isArray(v)) return v.map(clean);
-    if (v && typeof v === "object") {
-      const out: any = {};
-      for (const k of Object.keys(v)) out[k] = clean(v[k]);
-      return out;
-    }
-    return v;
-  };
-  return clean(data) as TailoredResume;
-}
-
-// --- Print-based ATS PDF renderer ---------------------------------------------
-// Previous approach hand-positioned every glyph with jsPDF (splitTextToSize /
-// getTextWidth), which turned out to be unreliable in the actual browser
-// build well enough to keep producing overflowing, "distorted"-looking PDFs
-// even after tightening the wrap math around it -- the width measurement
-// primitive itself couldn't be trusted, so nothing built on top of it could
-// be either. Text layout is a solved problem in the browser's own rendering
-// engine (the same kind of engine that renders this correctly when pasted
-// into Claude or Word): render the resume as plain, single-column, real-text
-// HTML with a standard font, then hand it to the browser's native
-// print-to-PDF via window.print(). The output is genuine selectable text --
-// exactly what ATS parsers want -- laid out by a mature, battle-tested text
-// engine instead of ~200 lines of manual glyph-width math.
-const RESUME_PRINT_ROOT_ID = "acadsphere-resume-print-root";
-
-function ResumePrintDocument({ data }: { data: TailoredResume | null }) {
-  if (!data) return null;
-  const clean = sanitizeTailoredResume(data);
-  const contactLine = [clean.header?.contact, clean.header?.links].filter(Boolean).join("  |  ");
-
-  return (
-    <div id={RESUME_PRINT_ROOT_ID}>
-      <style>{`
-        #${RESUME_PRINT_ROOT_ID} { display: none; }
-        @media print {
-          @page { size: A4; margin: 14mm 15mm; }
-          html, body { background: #fff !important; }
-          body * { visibility: hidden !important; }
-          #${RESUME_PRINT_ROOT_ID}, #${RESUME_PRINT_ROOT_ID} * { visibility: visible !important; }
-          #${RESUME_PRINT_ROOT_ID} {
-            display: block !important;
-            position: absolute; top: 0; left: 0; width: 100%;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #111827;
-            font-size: 10pt;
-            line-height: 1.42;
-          }
-          #${RESUME_PRINT_ROOT_ID} h1 { font-size: 18pt; font-weight: 700; margin: 0 0 2pt; color: #0f172a; }
-          #${RESUME_PRINT_ROOT_ID} .rp-contact { font-size: 9pt; color: #475569; margin: 0 0 8pt; }
-          #${RESUME_PRINT_ROOT_ID} h2 {
-            font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
-            margin: 10pt 0 3pt; padding-bottom: 2pt; border-bottom: 0.75pt solid #cbd5e1; color: #0f172a;
-          }
-          #${RESUME_PRINT_ROOT_ID} .rp-row-head {
-            display: flex; justify-content: space-between; align-items: baseline; gap: 8pt;
-            font-weight: 700; font-size: 10pt; color: #0f172a; margin-top: 6pt;
-          }
-          #${RESUME_PRINT_ROOT_ID} .rp-row-date { font-weight: 400; font-style: italic; font-size: 9pt; color: #475569; white-space: nowrap; }
-          #${RESUME_PRINT_ROOT_ID} ul { margin: 2pt 0 0; padding-left: 12pt; }
-          #${RESUME_PRINT_ROOT_ID} li { margin: 1.5pt 0; }
-          #${RESUME_PRINT_ROOT_ID} p { margin: 2pt 0; }
-          #${RESUME_PRINT_ROOT_ID} .rp-skill-line { margin: 2pt 0; }
-          #${RESUME_PRINT_ROOT_ID} .rp-skill-cat { font-weight: 700; }
-          #${RESUME_PRINT_ROOT_ID} .rp-details { font-size: 9pt; font-style: italic; color: #475569; margin: 1pt 0 0; }
-        }
-      `}</style>
-
-      <h1>{clean.header?.fullName || "Candidate Name"}</h1>
-      {contactLine && <p className="rp-contact">{contactLine}</p>}
-
-      {clean.summary && (
-        <>
-          <h2>Professional Summary</h2>
-          <p>{clean.summary}</p>
-        </>
-      )}
-
-      {clean.skills && Object.keys(clean.skills).length > 0 && (
-        <>
-          <h2>Technical Skills</h2>
-          {Object.entries(clean.skills).map(([category, items]) => (
-            <p className="rp-skill-line" key={category}>
-              <span className="rp-skill-cat">{category}: </span>
-              {String(items)}
-            </p>
-          ))}
-        </>
-      )}
-
-      {clean.experience && clean.experience.length > 0 && (
-        <>
-          <h2>Work Experience</h2>
-          {clean.experience.map((exp, i) => (
-            <div key={i}>
-              <div className="rp-row-head">
-                <span>{[exp.company, exp.role].filter(Boolean).join(" \u2014 ")}</span>
-                <span className="rp-row-date">{exp.period}</span>
-              </div>
-              {exp.bullets && exp.bullets.length > 0 && (
-                <ul>
-                  {exp.bullets.map((b, bi) => <li key={bi}>{b}</li>)}
-                </ul>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-
-      {clean.projects && clean.projects.length > 0 && (
-        <>
-          <h2>Key Projects</h2>
-          {clean.projects.map((proj, i) => (
-            <div key={i}>
-              <div className="rp-row-head">
-                <span>{proj.tech ? `${proj.name} | ${proj.tech}` : proj.name}</span>
-                <span className="rp-row-date">{proj.period}</span>
-              </div>
-              {proj.bullets && proj.bullets.length > 0 && (
-                <ul>
-                  {proj.bullets.map((b, bi) => <li key={bi}>{b}</li>)}
-                </ul>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-
-      {((clean.education && clean.education.length > 0) || (clean.certifications && clean.certifications.length > 0)) && (
-        <>
-          <h2>Education &amp; Certifications</h2>
-          {(clean.education || []).map((edu, i) => (
-            <div key={i}>
-              <div className="rp-row-head">
-                <span>{[edu.degree, edu.institution].filter(Boolean).join(" \u2014 ")}</span>
-                <span className="rp-row-date">{edu.period}</span>
-              </div>
-              {edu.details && <p className="rp-details">{edu.details}</p>}
-            </div>
-          ))}
-          {clean.certifications && clean.certifications.length > 0 && (
-            <p className="rp-skill-line">
-              <span className="rp-skill-cat">Certifications: </span>
-              {clean.certifications.join(" \u2022 ")}
-            </p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// Renders ResumePrintDocument into the hidden print root and triggers the
-// browser's native print dialog. document.title is used by Chrome as the
-// default "Save As" filename, so it's set to the tailored filename for the
-// duration of the print flow.
-function triggerResumePrint(filename: string) {
-  const cleanName = (filename || "Tailored_Resume").replace(/\.pdf$/i, "");
-  const prevTitle = document.title;
-  document.title = cleanName;
-  const restore = () => {
-    document.title = prevTitle;
-    window.removeEventListener("afterprint", restore);
-  };
-  window.addEventListener("afterprint", restore);
-  // Give the (already-rendered, just-unhidden-by-CSS) print root a frame to
-  // settle before invoking print.
-  requestAnimationFrame(() => {
-    window.print();
-    // Some browsers (older Safari) don't fire afterprint reliably -- restore
-    // the title on a timeout as a fallback too.
-    setTimeout(restore, 2000);
-  });
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function ResumeTailorerPage() {
   const tailorFn = useServerFn(tailorResume);
+  const renderPdfFn = useServerFn(getTailoredResumePdf);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState("");
@@ -458,14 +289,27 @@ function ResumeTailorerPage() {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!tailoredResume) return;
     setIsDownloading(true);
     try {
-      triggerResumePrint(tailoredResume.customFilename || "Tailored_Resume");
-      toast.success("Opening print dialog — choose \"Save as PDF\" to download.");
+      const { pdfBase64 } = await renderPdfFn({ data: { resume: tailoredResume } });
+      const byteChars = atob(pdfBase64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const filename = `${(tailoredResume.customFilename || "Tailored_Resume").replace(/\.pdf$/i, "")}.pdf`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded: ${filename}`);
     } catch (err: any) {
-      toast.error("Could not open the print dialog: " + err.message);
+      toast.error("PDF generation failed: " + (err?.message || "Please try again."));
     } finally {
       setIsDownloading(false);
     }
@@ -1004,7 +848,7 @@ function ResumeTailorerPage() {
                         {isDownloading ? (
                           <>
                             <Spinner className="h-4 w-4" />
-                            Opening print dialog...
+                            Generating PDF...
                           </>
                         ) : (
                           <>
@@ -1021,8 +865,6 @@ function ResumeTailorerPage() {
           </div>
         </div>
       </div>
-      {/* Hidden except during printing — see ResumePrintDocument for why. */}
-      <ResumePrintDocument data={tailoredResume} />
     </ChatLayout>
   );
 }

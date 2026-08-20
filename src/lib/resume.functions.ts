@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateText } from "ai";
 import { getAiModel, getAiModelWithCustomKey } from "./ai-gateway.server";
+import { renderResumePdf } from "./resume-pdf.server";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -281,6 +282,7 @@ CRITICAL RULES:
 3. CONCISE IMPACT BULLETS: Keep bullet points punchy and action-oriented using strong verbs (e.g., "Architected", "Integrated", "Optimized").
 4. FILE NAMING: Generate a custom, clean filename (e.g., "First_Last_Target_Role_Resume") derived from the resume's own header and the JD's target role, never a placeholder person.
 5. Use ONLY facts present in the original resume — never invent a name, employer, project, credential, technology, or metric that isn't there. Tailoring means re-emphasis and rewording, not fabrication.
+6. PRESERVE HYPERLINKS EXACTLY: if the resume text below contains a line starting with "[Detected hyperlinks in original document:", it lists the real URLs that were hyperlinked in the source PDF/DOCX (portfolio site, LinkedIn, GitHub, etc. — these are often only shown as plain labels like "LinkedIn" in the visible text, with the real URL only present in that detected-hyperlinks line). Copy those exact URLs into the "links" field, do not paraphrase or drop them, and do not include that bracketed marker line itself anywhere in your output.
 
 RESUME TEXT:
 ${data.resumeText}
@@ -324,4 +326,25 @@ RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA (no markdown fences, no p
       console.error("[tailorResume] Model did not return valid JSON:", text.slice(0, 500));
       throw new Error("AI tailoring returned an unexpected format. Please try again.");
     }
+  });
+
+const RenderPdfInputSchema = z.object({
+  resume: z.any(), // the TailoredResume JSON produced by tailorResume
+});
+
+// ─── Render the tailored resume to a real, ATS-safe PDF ───────────────────────
+// Runs a real headless Chromium instance server-side (see resume-pdf.server.ts
+// for why: two prior client-side approaches — jsPDF manual glyph positioning,
+// then the browser's own window.print() — both produced visibly distorted
+// output, because they either mis-measured text width or let the rest of the
+// app's on-screen layout influence the print page's effective width. A fully
+// isolated server-rendered page with nothing else in the DOM removes that
+// entire bug class. Returns the PDF as base64 so it travels over the same
+// server-function RPC channel as the rest of this file.
+export const getTailoredResumePdf = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => RenderPdfInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const pdfBuffer = await renderResumePdf(data.resume);
+    return { pdfBase64: pdfBuffer.toString("base64") };
   });
