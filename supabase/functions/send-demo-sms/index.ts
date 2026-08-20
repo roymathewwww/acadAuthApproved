@@ -2,10 +2,8 @@
 // On-demand demo SMS for live presentations.
 // Called directly from the browser with live classroom counts.
 
-const TWILIO_SID   = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_FROM  = Deno.env.get("TWILIO_PHONE_FROM") || Deno.env.get("TWILIO_PHONE_NUMBER")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const FAST2SMS_API_KEY = Deno.env.get("FAST2SMS_API_KEY")!;
+const SUPABASE_URL     = Deno.env.get("SUPABASE_URL")!;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,22 +11,36 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// ── Fast2SMS "Quick SMS" helper ────────────────────────────────────────────
+// Free-credit, DLT-exempt route meant for exactly this kind of low-volume,
+// custom-text alert (unlike Twilio trial accounts, it doesn't force
+// predefined templates). Expects a bare 10-digit Indian mobile number —
+// no "+91" / country code — so we strip anything else off first.
 async function sendSms(to: string, body: string): Promise<void> {
-  const creds = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${creds}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ To: to, From: TWILIO_FROM, Body: body }).toString(),
-    }
-  );
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Twilio ${res.status}: ${err}`);
+  const digits = to.replace(/\D/g, "");
+  const number = digits.length > 10 ? digits.slice(-10) : digits;
+  if (number.length !== 10) {
+    throw new Error(`Fast2SMS: "${to}" is not a valid 10-digit Indian mobile number`);
+  }
+
+  const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+    method: "POST",
+    headers: {
+      authorization: FAST2SMS_API_KEY,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      route: "q",
+      message: body,
+      language: "english",
+      flash: "0",
+      numbers: number,
+    }).toString(),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json?.return !== true) {
+    throw new Error(`Fast2SMS ${res.status}: ${JSON.stringify(json)}`);
   }
 }
 
@@ -51,7 +63,7 @@ Deno.serve(async (req) => {
     } = await req.json();
 
     // Resolve the destination phone number
-    const toPhone: string = phone || Deno.env.get("TWILIO_PHONE_NUMBER") || Deno.env.get("TWILIO_PHONE_FROM")!;
+    const toPhone: string = phone || Deno.env.get("DEMO_SMS_FALLBACK_PHONE") || "";
     if (!toPhone) {
       return new Response(
         JSON.stringify({ success: false, error: "No destination phone number" }),

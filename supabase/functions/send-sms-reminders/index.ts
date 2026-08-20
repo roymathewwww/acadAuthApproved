@@ -1,34 +1,43 @@
 // supabase/functions/send-sms-reminders/index.ts
 // Triggered by pg_cron every 15 minutes.
-// Uses raw fetch() to Twilio REST API — no heavy SDK needed in Deno/Edge.
+// Uses raw fetch() to the Fast2SMS REST API — no heavy SDK needed in Deno/Edge.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TWILIO_SID     = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-const TWILIO_TOKEN   = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-const TWILIO_FROM    = Deno.env.get("TWILIO_PHONE_FROM") || Deno.env.get("TWILIO_PHONE_NUMBER")!;   // e.g. +1415XXXXXXX
+const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY       = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const FAST2SMS_API_KEY  = Deno.env.get("FAST2SMS_API_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-// ── Twilio SMS helper ─────────────────────────────────────────────────────────
+// ── Fast2SMS "Quick SMS" helper ─────────────────────────────────────────────
+// DLT-exempt route for low-volume custom-text alerts — expects a bare
+// 10-digit Indian mobile number (no "+91" / country code).
 async function sendSms(to: string, body: string): Promise<void> {
-  const creds = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${creds}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ To: to, From: TWILIO_FROM, Body: body }).toString(),
-    }
-  );
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Twilio ${res.status}: ${err}`);
+  const digits = to.replace(/\D/g, "");
+  const number = digits.length > 10 ? digits.slice(-10) : digits;
+  if (number.length !== 10) {
+    throw new Error(`Fast2SMS: "${to}" is not a valid 10-digit Indian mobile number`);
+  }
+
+  const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+    method: "POST",
+    headers: {
+      authorization: FAST2SMS_API_KEY,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      route: "q",
+      message: body,
+      language: "english",
+      flash: "0",
+      numbers: number,
+    }).toString(),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json?.return !== true) {
+    throw new Error(`Fast2SMS ${res.status}: ${JSON.stringify(json)}`);
   }
 }
 

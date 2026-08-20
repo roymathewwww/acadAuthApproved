@@ -378,7 +378,7 @@ function SettingsPage() {
                       </div>
                       SMS Assignment Reminders
                     </CardTitle>
-                    <CardDescription className="text-[10px]">Get SMS alerts at 24h, 6h, and 1h before deadlines — even when the app is closed. Powered by Twilio.</CardDescription>
+                    <CardDescription className="text-[10px]">Get SMS alerts at 24h, 6h, and 1h before deadlines — even when the app is closed.</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-4">
                     {/* Toggle */}
