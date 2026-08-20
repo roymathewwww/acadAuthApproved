@@ -226,7 +226,6 @@ try {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    try { db.exec("ALTER TABLE threads ADD COLUMN module TEXT;"); } catch (_) {}
 
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY,
@@ -328,6 +327,13 @@ try {
     CREATE INDEX IF NOT EXISTS student_activities_user_id_idx ON student_activities (user_id);
     CREATE INDEX IF NOT EXISTS student_activities_created_at_idx ON student_activities (created_at);
   `);
+
+  // ─── Migrate pre-existing DB files that predate the threads.module column ──
+  try {
+    db.exec("ALTER TABLE threads ADD COLUMN module TEXT;");
+  } catch (_) {
+    // column already exists — safe to ignore
+  }
 
   // ─── Seed Admin User (admin@gmail.com / iamadmin@1) ──────────────────────
   const ADMIN_EMAIL = "admin@gmail.com";

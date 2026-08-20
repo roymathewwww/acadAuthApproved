@@ -1,5 +1,5 @@
 import { supabaseServer } from "@/integrations/supabase/supabase.server";
-import { getDb, getSupabaseServerClient } from "@/lib/db.server";
+import { getDb, getSupabaseServerClient, ensureUserExistsInSqlite } from "@/lib/db.server";
 import crypto from "node:crypto";
 
 export type StudentMetricsRecord = {
@@ -117,7 +117,6 @@ export async function createDefaultMetrics(userId: string): Promise<StudentMetri
         return { data, error };
       },
       () => {
-        const { ensureUserExistsInSqlite } = require("@/lib/db.server");
         ensureUserExistsInSqlite(userId);
         const db = getDb();
         const id = crypto.randomUUID();
