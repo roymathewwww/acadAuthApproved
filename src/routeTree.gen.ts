@@ -18,6 +18,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiSyncAttendanceRouteImport } from './routes/api/sync-attendance'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAiStatusRouteImport } from './routes/api/ai-status'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -89,6 +90,11 @@ const ApiSyncAttendanceRoute = ApiSyncAttendanceRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiStatusRoute = ApiAiStatusRouteImport.update({
+  id: '/api/ai-status',
+  path: '/api/ai-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/students'
     | '/admin/users'
+    | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/students'
     | '/admin/users'
+    | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/students'
     | '/admin/users'
+    | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiAiStatusRoute: typeof ApiAiStatusRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiSyncAttendanceRoute: typeof ApiSyncAttendanceRoute
 }
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai-status': {
+      id: '/api/ai-status'
+      path: '/api/ai-status'
+      fullPath: '/api/ai-status'
+      preLoaderRoute: typeof ApiAiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
@@ -845,6 +865,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiAiStatusRoute: ApiAiStatusRoute,
   ApiChatRoute: ApiChatRoute,
   ApiSyncAttendanceRoute: ApiSyncAttendanceRoute,
 }
