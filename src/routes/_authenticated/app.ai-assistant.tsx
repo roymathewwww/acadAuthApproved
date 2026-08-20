@@ -132,6 +132,12 @@ function AIAssistantPage() {
   const streamBufferRef = useRef("");
   const rafRef = useRef<number | null>(null);
 
+  // Set right before we assign a brand-new thread id from inside a send that's
+  // already in flight (see ensureThread). The thread-switch effect below uses
+  // this to skip re-fetching messages from the DB in that specific case — see
+  // that effect for why skipping matters.
+  const skipNextThreadLoadRef = useRef(false);
+
   /* — sidebar UI state — */
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -152,6 +158,20 @@ function AIAssistantPage() {
   useEffect(() => {
     if (!activeThreadId) {
       setMessages([]);
+      return;
+    }
+    // ensureThread() just created this thread as part of a send that's still
+    // in flight — the correct message list is already sitting in local state
+    // (the optimistic user bubble, soon followed by the streamed reply).
+    // Re-fetching from the DB right now would race the async saveMsgFn calls
+    // for that very message pair: if this fetch resolves before they've
+    // finished persisting, it overwrites local state with an empty/partial
+    // list and the first exchange in every new chat silently disappears —
+    // exactly the "first message never gets a reply" bug. Every subsequent
+    // message in the same thread never hits this path since activeThreadId
+    // doesn't change again, which is why only the very first message broke.
+    if (skipNextThreadLoadRef.current) {
+      skipNextThreadLoadRef.current = false;
       return;
     }
     setMessagesLoading(true);
@@ -189,6 +209,7 @@ function AIAssistantPage() {
     try {
       const thread = await createFn({ data: { title, module: "ai-assistant" } }) as Thread;
       if (thread && thread.id) {
+        skipNextThreadLoadRef.current = true;
         setActiveThreadId(thread.id);
         qc.invalidateQueries({ queryKey: ["threads"] });
         return thread.id;
@@ -197,6 +218,7 @@ function AIAssistantPage() {
       console.warn("Failed creating thread via server function:", e);
     }
     const fallbackId = "thread-" + crypto.randomUUID();
+    skipNextThreadLoadRef.current = true;
     setActiveThreadId(fallbackId);
     return fallbackId;
   }, [activeThreadId, createFn, qc]);
