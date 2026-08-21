@@ -45,9 +45,10 @@ function AttendancePage() {
     queryFn: () => getDashboardFn(),
   });
 
-  const { data: tokenData } = useQuery({
+  const { data: tokenData, error: tokenError, isError: tokenIsError, refetch: refetchToken } = useQuery({
     queryKey: ["attendanceSyncToken"],
     queryFn: () => getTokenFn(),
+    retry: false,
   });
 
   const regenMutation = useMutation({
@@ -175,26 +176,40 @@ function AttendancePage() {
                   <li>Click <strong className="text-foreground">Sync Now</strong> in the extension popup (or the on-page sync widget) — your data appears here automatically.</li>
                 </ol>
 
-                <div className="mt-4 flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-muted/50 font-mono text-[11px] text-foreground truncate">
-                    {tokenData?.token ?? "Generating…"}
+                {tokenIsError ? (
+                  <div className="rounded-xl border border-brand-red/25 bg-brand-red/10 p-3">
+                    <p className="text-xs font-bold text-brand-red">Couldn't generate a token</p>
+                    <p className="text-[10px] text-brand-red/90 mt-1">
+                      {(tokenError as any)?.message || "Unknown error — check the server logs."}
+                    </p>
+                    <Button size="sm" variant="outline" className="mt-2" onClick={() => refetchToken()}>
+                      <RefreshCw className="h-3 w-3 mr-1" /> Try again
+                    </Button>
                   </div>
-                  <Button size="icon-sm" variant="outline" onClick={copyToken} title="Copy token">
-                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="outline"
-                    onClick={() => regenMutation.mutate()}
-                    disabled={regenMutation.isPending}
-                    title="Regenerate token (invalidates the old one)"
-                  >
-                    {regenMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground/70 mt-2">
-                  This token identifies your account to the extension — keep it private, like a password. Regenerating it disconnects any extension using the old one.
-                </p>
+                ) : (
+                  <>
+                    <div className="mt-4 flex items-center gap-2">
+                      <div className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-muted/50 font-mono text-[11px] text-foreground truncate">
+                        {tokenData?.token ?? "Generating…"}
+                      </div>
+                      <Button size="icon-sm" variant="outline" onClick={copyToken} title="Copy token">
+                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={() => regenMutation.mutate()}
+                        disabled={regenMutation.isPending}
+                        title="Regenerate token (invalidates the old one)"
+                      >
+                        {regenMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 mt-2">
+                      This token identifies your account to the extension — keep it private, like a password. Regenerating it disconnects any extension using the old one.
+                    </p>
+                  </>
+                )}
                 {tokenData?.lastUsedAt && (
                   <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
                     <Wifi className="h-3 w-3" /> Extension last synced {new Date(tokenData.lastUsedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
