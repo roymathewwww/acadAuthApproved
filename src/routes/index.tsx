@@ -12,7 +12,8 @@ import {
   BookOpen, CalendarDays, CheckCircle2, LayoutDashboard, User, Settings,
   Loader2, LogIn, Zap, GraduationCap, Wand2, FileOutput
 } from "lucide-react";
-import { AntigravityMeshBackground } from "@/components/ui/antigravity-mesh-background";
+import { FluidFlowGrid } from "@/components/ui/fluid-flow-grid";
+import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/")(({
   head: () => ({
@@ -141,18 +142,8 @@ function Landing() {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      {/* ─── Reactive Anti-Gravity Mesh Canvas Background ─────── */}
-      <AntigravityMeshBackground
-        isSuccess={isAuthSuccess}
-        particleCount={90}
-        connectionDistance={145}
-        repulsionRadius={190}
-        repulsionStrength={15}
-        nodeColor={isDark ? "#818cf8" : "#4f46e5"}
-        lineColor={isDark ? "#6366f1" : "#818cf8"}
-        lineOpacity={isDark ? 0.28 : 0.22}
-        successColor="#10b981"
-      />
+      {/* ─── Fluid Flow Grid Canvas Background ─────────────────── */}
+      <FluidFlowGrid isDark={isDark} isSuccess={isAuthSuccess} />
 
       {/* ─── Floating Pill Navigation ───────────────────────── */}
       <div className="sticky top-0 z-50 flex justify-center pt-4 px-6">
@@ -213,103 +204,78 @@ function Landing() {
           }}
         />
 
-        <div className="relative mx-auto max-w-5xl px-6 grid gap-16 lg:grid-cols-12 items-center">
+        <div className="relative mx-auto max-w-4xl px-6 flex flex-col items-center text-center">
 
-          {/* Left: text */}
-          <div className="lg:col-span-7 flex flex-col items-start">
+          {/* Overline label */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="inline-flex items-center gap-2 mb-6"
+          >
+            <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+              Version 2.0 · Professional Academic Workspace
+            </span>
+          </motion.div>
 
-            {/* Overline label */}
-            <div className="inline-flex items-center gap-2 mb-8">
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Version 2.0 · Professional Academic Workspace
-              </span>
-            </div>
-
-            <h1
-              className="font-display font-black text-foreground"
-              style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)", letterSpacing: "-0.04em", lineHeight: 1.05 }}
+          {/* Big non-linear wordmark, above the tagline */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
+            className="flex flex-col leading-none select-none mb-2"
+          >
+            <span
+              className="font-wordmark-script text-foreground text-[4.5rem] sm:text-[6rem] leading-none -rotate-6 self-center -mb-4 sm:-mb-6"
             >
-              The premium academic
-              <br />
-              operating system for
-              <br />
-              <span className="text-brand-red">high achievers.</span>
-            </h1>
+              Acad
+            </span>
+            <span className="font-wordmark-block text-brand-red text-[6rem] sm:text-[9rem] leading-[0.75] tracking-tight">
+              SPHERE
+            </span>
+          </motion.div>
 
-            <p className="mt-8 max-w-lg text-base font-sans text-muted-foreground leading-relaxed">
-              Consolidate notes, career roadmaps, lab manuals, and mock examinations
-              into a single unified workspace — engineered for serious engineering students.
-            </p>
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
+            className="font-display font-black text-foreground mt-4"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", letterSpacing: "-0.04em", lineHeight: 1.05 }}
+          >
+            The premium academic
+            <br />
+            operating system for
+            <br />
+            <span className="text-brand-red">high achievers.</span>
+          </motion.h1>
 
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to="/auth">
-                  Start Your Journey
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <a href="#features">Explore Modules</a>
-              </Button>
-            </div>
-          </div>
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.25 }}
+            className="mt-8 max-w-lg text-base font-sans text-muted-foreground leading-relaxed"
+          >
+            Consolidate notes, career roadmaps, lab manuals, and mock examinations
+            into a single unified workspace — engineered for serious engineering students.
+          </motion.p>
 
-          {/* Right: editorial stats panel */}
-          <div className="lg:col-span-5 hidden lg:block">
-            <div className="rounded-2xl border border-border bg-card p-8 space-y-6">
-
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Student Success Overview
-                  </p>
-                  <p className="mt-1.5 font-sans font-bold text-2xl tracking-tight text-foreground">
-                    92% Placement Ready
-                  </p>
-                </div>
-                <div className="h-8 w-8 rounded-lg border border-brand-gold/40 bg-brand-gold/10 flex items-center justify-center">
-                  <span className="h-2.5 w-2.5 rounded-full bg-brand-red" />
-                </div>
-              </div>
-
-              {/* Progress bars */}
-              <div className="space-y-4">
-                {[
-                  { label: "Resume ATS Score",   pct: 92 },
-                  { label: "Roadmap Progress",   pct: 67 },
-                  { label: "Attendance",         pct: 93 },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                        {item.label}
-                      </span>
-                      <span className="font-mono text-[10px] text-foreground">{item.pct}%</span>
-                    </div>
-                    <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-foreground transition-all duration-500"
-                        style={{ width: `${item.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Divider + meta */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                    AI queries today
-                  </span>
-                  <span className="font-sans font-bold text-foreground">47</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.35 }}
+            className="mt-10 flex flex-wrap justify-center gap-3"
+          >
+            <Button asChild size="lg">
+              <Link to="/auth">
+                Start Your Journey
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <a href="#features">Explore Modules</a>
+            </Button>
+          </motion.div>
         </div>
       </section>
 
