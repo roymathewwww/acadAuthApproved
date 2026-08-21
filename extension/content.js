@@ -170,6 +170,55 @@ async function clickTabByText(text) {
   return true;
 }
 
+// CUE's Course Overview has a grid/card view and a list view — the scraper
+// is built against the grid view's per-subject card text ("X of Y hours
+// attended"). List view renders the same numbers in a compact table that
+// doesn't have that phrase at all, so course scraping finds nothing there.
+// The two view-toggle buttons are icon-only (no visible text), so they
+// can't be matched by clickTabByText — try several reasonable ways to
+// identify the grid one before giving up and letting the scrape fail with
+// its normal "couldn't find course cards" message.
+async function ensureGridView() {
+  // Quick check: if the grid-view phrase is already findable, do nothing.
+  if (findExactMatches(document.body, HOURS_ATTENDED_RE).length > 0) return true;
+
+  const candidates = Array.from(
+    document.querySelectorAll("button[aria-label], button[title], [role='button'][aria-label]")
+  ).filter((el) => {
+    const label = `${el.getAttribute("aria-label") || ""} ${el.getAttribute("title") || ""}`.toLowerCase();
+    return /grid|card|tile/.test(label);
+  });
+
+  if (candidates.length > 0) {
+    LOG("ensureGridView: clicking a labeled grid/card/tile view toggle");
+    candidates[0].click();
+    await new Promise((r) => setTimeout(r, 700));
+    return findExactMatches(document.body, HOURS_ATTENDED_RE).length > 0;
+  }
+
+  // Fallback: an unlabeled pair of small icon-only buttons near "Download
+  // Report" is the grid/list toggle in CUE's UI (per the reference
+  // screenshots) — the grid one is the left/first of the pair. Icon-only
+  // buttons have empty textContent, which makes them identifiable.
+  const downloadBtn = Array.from(document.querySelectorAll("button")).find((el) =>
+    /download report/i.test(el.textContent || "")
+  );
+  if (downloadBtn) {
+    const iconButtons = Array.from(downloadBtn.parentElement?.querySelectorAll("button") || []).filter(
+      (el) => normText(el.textContent || "") === ""
+    );
+    if (iconButtons.length > 0) {
+      LOG("ensureGridView: clicking the first icon-only button near Download Report (assumed grid view)");
+      iconButtons[0].click();
+      await new Promise((r) => setTimeout(r, 700));
+      return findExactMatches(document.body, HOURS_ATTENDED_RE).length > 0;
+    }
+  }
+
+  LOG("ensureGridView: couldn't find a view toggle — leaving the page as-is");
+  return false;
+}
+
 async function scrapeDailyLog() {
   try {
     const switched = await clickTabByText("Daily Log");
@@ -228,10 +277,13 @@ async function runSync(setStatus) {
     return { ok: false };
   }
 
+  setStatus("working", "Checking view mode…");
+  await ensureGridView();
+
   setStatus("working", "Scraping course-wise attendance…");
   const courseWise = scrapeCourseWise();
   if (courseWise.length === 0) {
-    setStatus("error", "Couldn't find any course cards on this page. Make sure you're on the Attendance → Course Overview tab. (Open DevTools console for details — look for '[AcadSphere Sync]' lines.)");
+    setStatus("error", "Couldn't find any course cards. Switch to the grid/card view (tile icon next to Download Report) and try again — the compact list view isn't supported yet. (DevTools console has '[AcadSphere Sync]' details.)");
     return { ok: false };
   }
 
