@@ -14,7 +14,7 @@ import {
   User, Settings, Code, Volume2, CalendarDays,
   Users, Sun, Moon, X, Activity, GraduationCap,
   UserCog, Shield, Radio, Megaphone, TrendingUp, ScrollText, Lock, FileOutput,
-  Wand2, ChevronLeft, ChevronRight
+  Wand2, ChevronLeft, ChevronRight, Layers, Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -177,7 +177,29 @@ export function ChatLayout({
     { label: "Settings",         to: "/admin/settings",    icon: Settings },
   ];
 
-  const navItems = isAdmin ? adminNavItems : studentNavItems;
+  // Class Leader (CR) — every student module plus one extra: Class Management.
+  const classLeaderNavItems = [
+    ...studentNavItems,
+    { label: "Class Management", to: "/app/class-management", icon: Layers },
+  ];
+
+  // Class Teacher — a deliberately minimal 3-item view, not the full admin panel.
+  const teacherNavItems = [
+    { label: "Community",  to: "/app/community",   icon: Users },
+    { label: "Assign CR",  to: "/app/assign-cr",    icon: Crown },
+    { label: "Dashboard",  to: "/app/students",     icon: LayoutDashboard },
+  ];
+
+  const isTeacher = userRole === "teacher";
+  const isClassLeader = userRole === "class_leader";
+
+  const navItems = isAdmin
+    ? adminNavItems
+    : isTeacher
+    ? teacherNavItems
+    : isClassLeader
+    ? classLeaderNavItems
+    : studentNavItems;
 
   return (
     <div className="flex h-screen bg-background text-foreground antialiased font-sans overflow-hidden selection:bg-brand-red/20">

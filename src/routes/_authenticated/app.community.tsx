@@ -24,6 +24,7 @@ interface CommunityPost {
   user_id: string;
   author_name: string;
   author_initials: string;
+  author_role?: string;
   content: string;
   likes: number;
   created_at: string;
@@ -326,6 +327,7 @@ function CommunityPage() {
       const mapped: CommunityPost[] = (data || []).map((p: any) => ({
         id: p.id, user_id: p.user_id,
         author_name: p.author_name || "", author_initials: p.author_initials || "",
+        author_role: p.author_role || "student",
         content: p.content, likes: p.likes || 0, created_at: p.created_at,
         likedByMe: likedPostIds.has(p.id),
       }));
@@ -350,7 +352,8 @@ function CommunityPage() {
           const p = payload.new as any;
           const newPost: CommunityPost = {
             id: p.id, user_id: p.user_id, author_name: p.author_name || "",
-            author_initials: p.author_initials || "", content: p.content,
+            author_initials: p.author_initials || "", author_role: p.author_role || "student",
+            content: p.content,
             likes: p.likes || 0, created_at: p.created_at, likedByMe: false,
           };
           setPosts((prev) => {
@@ -673,10 +676,11 @@ function CommunityPage() {
     if (!newPostText.trim() || !currentUser) return;
     setPostSubmitting(true);
     const authorName = currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "Student";
+    const authorRole = (typeof window !== "undefined" && localStorage.getItem("demo_user_role")) || "student";
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticPost: CommunityPost = {
       id: optimisticId, user_id: currentUser.id, author_name: authorName,
-      author_initials: getInitials(authorName), content: newPostText.trim(),
+      author_initials: getInitials(authorName), author_role: authorRole, content: newPostText.trim(),
       likes: 0, created_at: new Date().toISOString(), likedByMe: false,
     };
     setPosts((prev) => [...prev, optimisticPost]);
@@ -684,7 +688,7 @@ function CommunityPage() {
     try {
       const { data, error } = await supabase.from("community_posts").insert({
         user_id: currentUser.id, author_name: authorName,
-        author_initials: getInitials(authorName), content: optimisticPost.content, likes: 0,
+        author_initials: getInitials(authorName), author_role: authorRole, content: optimisticPost.content, likes: 0,
       }).select().single();
       if (error) throw error;
       setPosts((prev) => prev.map((p) => (p.id === optimisticId ? { ...optimisticPost, id: data.id, created_at: data.created_at } : p)));
@@ -1250,17 +1254,31 @@ function CommunityPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredPosts.map((post) => (
-                    <Card key={post.id} className="border-border/80 bg-card/70 shadow-xs hover:border-border transition-colors rounded-2xl group">
+                  {filteredPosts.map((post) => {
+                    const isFaculty = post.author_role === "teacher";
+                    return (
+                    <Card
+                      key={post.id}
+                      className={`bg-card/70 shadow-xs transition-colors rounded-2xl group ${
+                        isFaculty
+                          ? "border-l-4 border-l-brand-red border-y border-r border-border/80 bg-brand-red/[0.03] hover:border-r-brand-red/40"
+                          : "border-border/80 hover:border-border"
+                      }`}
+                    >
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
-                            <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(post.author_initials)}`}>
+                            <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${isFaculty ? "bg-brand-red text-brand-red-foreground" : avatarColor(post.author_initials)}`}>
                               {post.author_initials}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="text-xs font-semibold text-foreground">{post.author_name}</p>
+                                {isFaculty && (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider bg-brand-red/15 text-brand-red px-1.5 py-0.5 rounded-full border border-brand-red/25">
+                                    Faculty
+                                  </span>
+                                )}
                                 {post.user_id !== currentUser?.id && (
                                   <button
                                     onClick={() => openChatWithPeer(post.user_id)}
@@ -1318,7 +1336,8 @@ function CommunityPage() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <div ref={feedEndRef} />

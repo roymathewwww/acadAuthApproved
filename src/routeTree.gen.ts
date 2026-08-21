@@ -41,9 +41,11 @@ import { Route as AuthenticatedAppExtraRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppConversionsRouteImport } from './routes/_authenticated/app.conversions'
 import { Route as AuthenticatedAppCommunityRouteImport } from './routes/_authenticated/app.community'
 import { Route as AuthenticatedAppClassroomRouteImport } from './routes/_authenticated/app.classroom'
+import { Route as AuthenticatedAppClassManagementRouteImport } from './routes/_authenticated/app.class-management'
 import { Route as AuthenticatedAppCareerRoadmapRouteImport } from './routes/_authenticated/app.career-roadmap'
 import { Route as AuthenticatedAppAttendanceRouteImport } from './routes/_authenticated/app.attendance'
 import { Route as AuthenticatedAppAssignmentsRouteImport } from './routes/_authenticated/app.assignments'
+import { Route as AuthenticatedAppAssignCrRouteImport } from './routes/_authenticated/app.assign-cr'
 import { Route as AuthenticatedAppAnnouncementsRouteImport } from './routes/_authenticated/app.announcements'
 import { Route as AuthenticatedAppAiAssistantRouteImport } from './routes/_authenticated/app.ai-assistant'
 import { Route as AuthenticatedAppThreadIdRouteImport } from './routes/_authenticated/app.$threadId'
@@ -215,6 +217,12 @@ const AuthenticatedAppClassroomRoute =
     path: '/app/classroom',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAppClassManagementRoute =
+  AuthenticatedAppClassManagementRouteImport.update({
+    id: '/app/class-management',
+    path: '/app/class-management',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppCareerRoadmapRoute =
   AuthenticatedAppCareerRoadmapRouteImport.update({
     id: '/app/career-roadmap',
@@ -231,6 +239,12 @@ const AuthenticatedAppAssignmentsRoute =
   AuthenticatedAppAssignmentsRouteImport.update({
     id: '/app/assignments',
     path: '/app/assignments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppAssignCrRoute =
+  AuthenticatedAppAssignCrRouteImport.update({
+    id: '/app/assign-cr',
+    path: '/app/assign-cr',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAppAnnouncementsRoute =
@@ -277,9 +291,11 @@ export interface FileRoutesByFullPath {
   '/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
+  '/app/assign-cr': typeof AuthenticatedAppAssignCrRoute
   '/app/assignments': typeof AuthenticatedAppAssignmentsRoute
   '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/career-roadmap': typeof AuthenticatedAppCareerRoadmapRoute
+  '/app/class-management': typeof AuthenticatedAppClassManagementRoute
   '/app/classroom': typeof AuthenticatedAppClassroomRoute
   '/app/community': typeof AuthenticatedAppCommunityRoute
   '/app/conversions': typeof AuthenticatedAppConversionsRoute
@@ -315,9 +331,11 @@ export interface FileRoutesByTo {
   '/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
+  '/app/assign-cr': typeof AuthenticatedAppAssignCrRoute
   '/app/assignments': typeof AuthenticatedAppAssignmentsRoute
   '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/career-roadmap': typeof AuthenticatedAppCareerRoadmapRoute
+  '/app/class-management': typeof AuthenticatedAppClassManagementRoute
   '/app/classroom': typeof AuthenticatedAppClassroomRoute
   '/app/community': typeof AuthenticatedAppCommunityRoute
   '/app/conversions': typeof AuthenticatedAppConversionsRoute
@@ -356,9 +374,11 @@ export interface FileRoutesById {
   '/_authenticated/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/_authenticated/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/_authenticated/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
+  '/_authenticated/app/assign-cr': typeof AuthenticatedAppAssignCrRoute
   '/_authenticated/app/assignments': typeof AuthenticatedAppAssignmentsRoute
   '/_authenticated/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/_authenticated/app/career-roadmap': typeof AuthenticatedAppCareerRoadmapRoute
+  '/_authenticated/app/class-management': typeof AuthenticatedAppClassManagementRoute
   '/_authenticated/app/classroom': typeof AuthenticatedAppClassroomRoute
   '/_authenticated/app/community': typeof AuthenticatedAppCommunityRoute
   '/_authenticated/app/conversions': typeof AuthenticatedAppConversionsRoute
@@ -397,9 +417,11 @@ export interface FileRouteTypes {
     | '/app/$threadId'
     | '/app/ai-assistant'
     | '/app/announcements'
+    | '/app/assign-cr'
     | '/app/assignments'
     | '/app/attendance'
     | '/app/career-roadmap'
+    | '/app/class-management'
     | '/app/classroom'
     | '/app/community'
     | '/app/conversions'
@@ -435,9 +457,11 @@ export interface FileRouteTypes {
     | '/app/$threadId'
     | '/app/ai-assistant'
     | '/app/announcements'
+    | '/app/assign-cr'
     | '/app/assignments'
     | '/app/attendance'
     | '/app/career-roadmap'
+    | '/app/class-management'
     | '/app/classroom'
     | '/app/community'
     | '/app/conversions'
@@ -475,9 +499,11 @@ export interface FileRouteTypes {
     | '/_authenticated/app/$threadId'
     | '/_authenticated/app/ai-assistant'
     | '/_authenticated/app/announcements'
+    | '/_authenticated/app/assign-cr'
     | '/_authenticated/app/assignments'
     | '/_authenticated/app/attendance'
     | '/_authenticated/app/career-roadmap'
+    | '/_authenticated/app/class-management'
     | '/_authenticated/app/classroom'
     | '/_authenticated/app/community'
     | '/_authenticated/app/conversions'
@@ -727,6 +753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppClassroomRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/app/class-management': {
+      id: '/_authenticated/app/class-management'
+      path: '/app/class-management'
+      fullPath: '/app/class-management'
+      preLoaderRoute: typeof AuthenticatedAppClassManagementRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/app/career-roadmap': {
       id: '/_authenticated/app/career-roadmap'
       path: '/app/career-roadmap'
@@ -746,6 +779,13 @@ declare module '@tanstack/react-router' {
       path: '/app/assignments'
       fullPath: '/app/assignments'
       preLoaderRoute: typeof AuthenticatedAppAssignmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/app/assign-cr': {
+      id: '/_authenticated/app/assign-cr'
+      path: '/app/assign-cr'
+      fullPath: '/app/assign-cr'
+      preLoaderRoute: typeof AuthenticatedAppAssignCrRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/app/announcements': {
@@ -777,9 +817,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppThreadIdRoute: typeof AuthenticatedAppThreadIdRoute
   AuthenticatedAppAiAssistantRoute: typeof AuthenticatedAppAiAssistantRoute
   AuthenticatedAppAnnouncementsRoute: typeof AuthenticatedAppAnnouncementsRoute
+  AuthenticatedAppAssignCrRoute: typeof AuthenticatedAppAssignCrRoute
   AuthenticatedAppAssignmentsRoute: typeof AuthenticatedAppAssignmentsRoute
   AuthenticatedAppAttendanceRoute: typeof AuthenticatedAppAttendanceRoute
   AuthenticatedAppCareerRoadmapRoute: typeof AuthenticatedAppCareerRoadmapRoute
+  AuthenticatedAppClassManagementRoute: typeof AuthenticatedAppClassManagementRoute
   AuthenticatedAppClassroomRoute: typeof AuthenticatedAppClassroomRoute
   AuthenticatedAppCommunityRoute: typeof AuthenticatedAppCommunityRoute
   AuthenticatedAppConversionsRoute: typeof AuthenticatedAppConversionsRoute
@@ -797,9 +839,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppThreadIdRoute: AuthenticatedAppThreadIdRoute,
   AuthenticatedAppAiAssistantRoute: AuthenticatedAppAiAssistantRoute,
   AuthenticatedAppAnnouncementsRoute: AuthenticatedAppAnnouncementsRoute,
+  AuthenticatedAppAssignCrRoute: AuthenticatedAppAssignCrRoute,
   AuthenticatedAppAssignmentsRoute: AuthenticatedAppAssignmentsRoute,
   AuthenticatedAppAttendanceRoute: AuthenticatedAppAttendanceRoute,
   AuthenticatedAppCareerRoadmapRoute: AuthenticatedAppCareerRoadmapRoute,
+  AuthenticatedAppClassManagementRoute: AuthenticatedAppClassManagementRoute,
   AuthenticatedAppClassroomRoute: AuthenticatedAppClassroomRoute,
   AuthenticatedAppCommunityRoute: AuthenticatedAppCommunityRoute,
   AuthenticatedAppConversionsRoute: AuthenticatedAppConversionsRoute,

@@ -34,6 +34,16 @@ function AuthPage() {
 
   const localLoginFn = useServerFn(localDemoLogin);
 
+  /* — Show a message if redirected here for being removed from a class — */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(location.search).get("removed") === "1") {
+      toast.error("You have been removed from your class.", {
+        description: "Contact your class teacher if you believe this is a mistake.",
+      });
+    }
+  }, [location.search]);
+
   /* — Check Session & Auto-provision Profile on Return — */
   useEffect(() => {
     if (location.pathname.includes("/callback")) return;
@@ -155,6 +165,24 @@ function AuthPage() {
 
         if (data?.user) {
           const user = data.user;
+
+          // Class-roles: block a removed student right at the login attempt,
+          // before any session state is written — matches "whoever is
+          // removed will get a message when trying to login".
+          const { data: removalCheck } = await supabase
+            .from("profiles")
+            .select("removed_at")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (removalCheck?.removed_at) {
+            await supabase.auth.signOut().catch(() => {});
+            toast.error("You have been removed from your class.", {
+              description: "Contact your class teacher if you believe this is a mistake.",
+            });
+            setLoading(false);
+            return;
+          }
+
           const isRoleAdmin =
             trimmedEmail.toLowerCase().includes("admin") ||
             user.user_metadata?.role === "admin";

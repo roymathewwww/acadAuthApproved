@@ -13,6 +13,7 @@ import {
   getSyncToken,
   regenerateSyncToken,
 } from "@/lib/attendance.functions";
+import { getTimetable } from "@/lib/class-roles.functions";
 import {
   Clock, CheckCircle2, XCircle, BookOpen, RefreshCw, Puzzle, Copy, Check,
   ChevronDown, ChevronRight, Calendar, TrendingUp, ShieldCheck, ShieldAlert,
@@ -35,10 +36,28 @@ function AttendancePage() {
   const getDashboardFn = useServerFn(getAttendanceDashboardData);
   const getTokenFn = useServerFn(getSyncToken);
   const regenTokenFn = useServerFn(regenerateSyncToken);
+  const getTimetableFn = useServerFn(getTimetable);
 
   const [showConnectPanel, setShowConnectPanel] = useState(false);
   const [copied, setCopied] = useState(false);
   const [logExpanded, setLogExpanded] = useState(false);
+  const [timetableExpanded, setTimetableExpanded] = useState(false);
+
+  const { data: timetable = [] } = useQuery({
+    queryKey: ["classTimetable"],
+    queryFn: () => getTimetableFn(),
+  });
+  const timetableByDay = useMemo(() => {
+    const map = new Map<string, typeof timetable>();
+    for (const r of timetable) {
+      const list = map.get(r.dayOfWeek) ?? [];
+      list.push(r);
+      map.set(r.dayOfWeek, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.periodNumber - b.periodNumber);
+    return map;
+  }, [timetable]);
+  const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["attendanceDashboardData"],
@@ -390,6 +409,49 @@ function AttendancePage() {
                 </AnimatePresence>
               </div>
             </>
+          )}
+
+          {/* ── Weekly Timetable (uploaded by your Class Leader) ── */}
+          {timetable.length > 0 && (
+            <div>
+              <button
+                onClick={() => setTimetableExpanded((v) => !v)}
+                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 hover:text-foreground transition-colors"
+              >
+                {timetableExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Weekly Timetable
+              </button>
+              <AnimatePresence>
+                {timetableExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {DAY_ORDER.filter((d) => timetableByDay.has(d)).map((day) => (
+                        <Card key={day}>
+                          <CardContent className="p-4">
+                            <p className="text-xs font-bold text-foreground mb-2">{day}</p>
+                            <div className="space-y-1.5">
+                              {timetableByDay.get(day)!.map((r, i) => (
+                                <div key={i} className="flex items-center justify-between text-[11px]">
+                                  <span className="text-muted-foreground">
+                                    P{r.periodNumber}{r.startTime ? ` · ${r.startTime}` : ""}
+                                  </span>
+                                  <span className="font-semibold text-foreground text-right">{r.subjectName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>

@@ -49,6 +49,11 @@ export const Route = createFileRoute("/_authenticated/app/")({
       if (role === "admin") {
         throw redirect({ to: "/admin" });
       }
+      // Teacher's "Dashboard" nav item is the class roster, not this
+      // student-oriented home page — send them straight there.
+      if (role === "teacher") {
+        throw redirect({ to: "/app/students" });
+      }
     }
   },
   component: AppIndex,
