@@ -502,13 +502,15 @@ function AIAssistantPage() {
 
           {/* New Chat button */}
           <div className="p-3 border-b border-border shrink-0">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
               onClick={handleNewChat}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 active:scale-[.98] transition-all duration-150 shadow-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-brand-red text-brand-red-foreground text-xs font-semibold hover:opacity-90 shadow-sm shadow-brand-red/20 transition-[opacity,box-shadow] duration-150"
             >
               <Plus className="h-3.5 w-3.5" />
               New Chat
-            </button>
+            </motion.button>
           </div>
 
           {/* Search */}
@@ -547,9 +549,11 @@ function AIAssistantPage() {
                     {label}
                   </p>
                   {items.map(thread => (
-                    <div
+                    <motion.div
                       key={thread.id}
-                      className={`group relative mx-2 flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-all duration-100 ${
+                      whileHover={{ x: 3 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                      className={`group relative mx-2 flex items-center gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors duration-100 ${
                         thread.id === activeThreadId
                           ? "bg-foreground text-background"
                           : "hover:bg-accent text-foreground"
@@ -616,14 +620,14 @@ function AIAssistantPage() {
                                 setMenuOpenId(null);
                                 deleteThreadMutation.mutate(thread.id);
                               }}
-                              className="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] text-red-500 hover:bg-red-500/10 transition-colors"
+                              className="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] text-brand-red hover:bg-brand-red/10 transition-colors"
                             >
                               <Trash2 className="h-3 w-3" /> Delete
                             </button>
                           </div>
                         </>
                       )}
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               ))
@@ -645,16 +649,19 @@ function AIAssistantPage() {
               >
                 <PanelLeft className="h-4 w-4" />
               </button>
-              <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </div>
+              <motion.div
+                whileHover={{ rotate: -8, scale: 1.08 }}
+                className="h-8 w-8 rounded-xl bg-brand-red flex items-center justify-center shadow-sm shrink-0"
+              >
+                <Sparkles className="h-4 w-4 text-brand-red-foreground" />
+              </motion.div>
               <span className="text-sm font-semibold text-foreground truncate">
                 {activeThreadId
                   ? (threads.find(t => t.id === activeThreadId)?.title ?? "AI Study Assistant")
                   : "AI Study Assistant"}
               </span>
             </div>
-            <span className="flex items-center gap-1.5 text-[10px] bg-primary/[0.08] text-primary border border-primary/15 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0">
+            <span className="flex items-center gap-1.5 text-[10px] bg-brand-red/[0.08] text-brand-red border border-brand-red/15 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Groq · GPT-OSS 120B
             </span>
@@ -668,11 +675,20 @@ function AIAssistantPage() {
               </div>
             ) : messages.length === 0 && !streamingContent ? (
               /* — Welcome / empty state — shown only when there are truly no messages — */
-              <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="flex flex-col items-center justify-center h-full px-6 py-12 text-center"
+              >
                 <div className="mb-6">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <Sparkles className="h-8 w-8 text-primary" />
-                  </div>
+                  <motion.div
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-red/20 to-brand-gold/10 border border-brand-red/20 flex items-center justify-center mx-auto mb-4 shadow-sm"
+                  >
+                    <Sparkles className="h-8 w-8 text-brand-red" />
+                  </motion.div>
                   <h2 className="text-xl font-bold text-foreground mb-1">How can I help you today?</h2>
                   <p className="text-sm text-muted-foreground max-w-xs">
                     Ask me anything — concepts, quiz questions, flashcards, lab help, or exam prep.
@@ -680,15 +696,23 @@ function AIAssistantPage() {
                 </div>
 
                 {/* Template cards */}
-                <div className="grid grid-cols-2 gap-3 w-full max-w-xl">
+                <motion.div
+                  initial="hidden"
+                  animate="show"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+                  className="grid grid-cols-2 gap-3 w-full max-w-xl"
+                >
                   {TEMPLATES.map((tmpl) => {
                     const Icon = tmpl.icon;
                     return (
-                      <button
+                      <motion.button
                         key={tmpl.label}
+                        variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                        whileHover={{ y: -3, scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => handleSend(tmpl.prompt)}
                         disabled={isStreaming}
-                        className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all duration-150 active:scale-[.98] ${tmpl.bg}`}
+                        className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-colors duration-150 ${tmpl.bg}`}
                       >
                         <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${tmpl.color}`} />
                         <div>
@@ -697,11 +721,11 @@ function AIAssistantPage() {
                             {tmpl.prompt}
                           </p>
                         </div>
-                      </button>
+                      </motion.button>
                     );
                   })}
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             ) : (
               /* — Message list — always rendered once the first user message is sent — */
               <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
@@ -715,9 +739,9 @@ function AIAssistantPage() {
                   flash: the bubble only appears once the first characters arrive.
                 */}
                 {streamingId && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-sm">
-                      <Bot className="h-4 w-4 text-primary-foreground" />
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-brand-red flex items-center justify-center shrink-0 shadow-sm">
+                      <Bot className="h-4 w-4 text-brand-red-foreground" />
                     </div>
                     {streamingContent ? (
                       /* Live responding card using AiResponseWriter with auto-scroll and status header */
@@ -735,13 +759,13 @@ function AIAssistantPage() {
                       /* No content yet → show subtle typing dots while waiting for first token */
                       <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3.5 shadow-md shadow-black/[0.03]">
                         <div className="flex gap-1 items-center h-4">
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-brand-red/60 animate-bounce [animation-delay:0ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-brand-red/60 animate-bounce [animation-delay:150ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-brand-red/60 animate-bounce [animation-delay:300ms]" />
                         </div>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 )}
 
                 <div ref={chatEndRef} />
@@ -753,7 +777,7 @@ function AIAssistantPage() {
           <div className="shrink-0 border-t border-border bg-card/70 backdrop-blur-md px-4 py-3">
             <div className="max-w-3xl mx-auto">
               <div className={`relative flex items-end gap-2 rounded-2xl border transition-all duration-150 bg-background shadow-md shadow-black/[0.04] ${
-                isStreaming ? "border-primary/30" : "border-border hover:border-primary/30 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15"
+                isStreaming ? "border-brand-red/30" : "border-border hover:border-brand-red/30 focus-within:border-brand-red focus-within:ring-2 focus-within:ring-brand-red/15"
               }`}>
                 <textarea
                   ref={inputRef}
@@ -766,13 +790,15 @@ function AIAssistantPage() {
                   className="flex-1 resize-none bg-transparent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none min-h-[48px] max-h-[180px] overflow-y-auto scrollbar-thin disabled:opacity-60"
                   style={{ height: "48px" }}
                 />
-                <button
+                <motion.button
+                  whileHover={input.trim() || isStreaming ? { scale: 1.08 } : undefined}
+                  whileTap={input.trim() || isStreaming ? { scale: 0.92 } : undefined}
                   onClick={() => isStreaming ? abortRef.current?.abort() : handleSend()}
-                  className={`shrink-0 mr-2 mb-2 h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-150 ${
+                  className={`shrink-0 mr-2 mb-2 h-8 w-8 rounded-xl flex items-center justify-center transition-colors duration-150 ${
                     isStreaming
-                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                      ? "bg-brand-red/10 text-brand-red hover:bg-brand-red/20"
                       : input.trim()
-                      ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
+                      ? "bg-brand-red text-brand-red-foreground hover:opacity-90 shadow-sm"
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   }`}
                   disabled={!input.trim() && !isStreaming}
@@ -783,7 +809,7 @@ function AIAssistantPage() {
                   ) : (
                     <Send className="h-3.5 w-3.5" />
                   )}
-                </button>
+                </motion.button>
               </div>
               <p className="text-center text-[9px] text-muted-foreground/50 mt-1.5">
                 Press Enter to send · Shift+Enter for new line
@@ -801,28 +827,31 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      {/* Avatar */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+    >
+      {/* Avatar — the AI gets the brand-red identity, you stay neutral */}
       <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-        isUser
-          ? "bg-primary"
-          : "bg-primary"
+        isUser ? "bg-primary" : "bg-brand-red"
       }`}>
         {isUser
           ? <User className="h-4 w-4 text-primary-foreground" />
-          : <Bot className="h-4 w-4 text-primary-foreground" />
+          : <Bot className="h-4 w-4 text-brand-red-foreground" />
         }
       </div>
 
       {/* Bubble */}
-      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-md shadow-black/[0.04] ${
+      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-md shadow-black/[0.04] transition-colors ${
         isUser
           ? "bg-primary text-primary-foreground rounded-tr-sm"
-          : "bg-card border border-border text-foreground rounded-tl-sm"
+          : "bg-card border border-border hover:border-brand-red/25 text-foreground rounded-tl-sm"
       }`}>
         <MarkdownContent content={message.content} isUser={isUser} isStreaming={isStreaming} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -848,7 +877,7 @@ function MarkdownContent({ content, isUser, isStreaming }: { content: string; is
 
     if (line.startsWith("### ")) {
       elements.push(
-        <h3 key={i} className="text-sm font-bold text-primary mt-2 mb-1 flex items-center gap-1.5">
+        <h3 key={i} className="text-sm font-bold text-brand-red mt-2 mb-1 flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           {line.replace("### ", "")}
         </h3>
@@ -910,7 +939,7 @@ function MarkdownContent({ content, isUser, isStreaming }: { content: string; is
               <div className="bg-muted/20 px-4 py-3 space-y-1">
                 {Object.entries(parsed).map(([k, v]) => (
                   <div key={k} className="flex items-baseline gap-2 text-[11px]">
-                    <span className="font-mono text-primary/80 shrink-0">{k}:</span>
+                    <span className="font-mono text-brand-red/80 shrink-0">{k}:</span>
                     <span className="text-foreground font-medium">
                       {typeof v === "object" ? JSON.stringify(v) : String(v)}
                     </span>
@@ -971,7 +1000,7 @@ function MarkdownContent({ content, isUser, isStreaming }: { content: string; is
           <ul key={`list-${i}`} className="my-1.5 space-y-1">
             {listItems.map((item, idx) => (
               <li key={idx} className="flex items-start gap-2 text-[13px] leading-relaxed">
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-brand-red shrink-0" />
                 <span><InlineMarkdown text={item} /></span>
               </li>
             ))}
@@ -1036,7 +1065,7 @@ function MarkdownContent({ content, isUser, isStreaming }: { content: string; is
       {elements}
       {isStreaming && (
         <span
-          className="inline-block w-[2px] h-[1em] bg-primary ml-0.5 align-middle"
+          className="inline-block w-[2px] h-[1em] bg-brand-red ml-0.5 align-middle"
           style={{ animation: "caretBlink 0.9s step-end infinite" }}
         />
       )}
@@ -1065,7 +1094,7 @@ function InlineMarkdown({ text }: { text: string }) {
       parts.push(<em key={key++} className="italic">{token.slice(1, -1)}</em>);
     } else if (token.startsWith("`")) {
       parts.push(
-        <code key={key++} className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-mono text-primary border border-border/60">
+        <code key={key++} className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-mono text-brand-red border border-border/60">
           {token.slice(1, -1)}
         </code>
       );

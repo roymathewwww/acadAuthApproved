@@ -863,7 +863,7 @@ function CommunityPage() {
                 <MessageCircle className="h-3.5 w-3.5" />
                 <span>Direct Messages</span>
                 {totalUnreadCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-primary text-primary-foreground">
+                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-brand-red text-brand-red-foreground">
                     {totalUnreadCount}
                   </span>
                 )}
@@ -1022,7 +1022,7 @@ function CommunityPage() {
                               {lastMsg || member.department}
                             </p>
                             {unread > 0 && (
-                              <span className="shrink-0 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-primary text-primary-foreground">
+                              <span className="shrink-0 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-brand-red text-brand-red-foreground">
                                 {unread}
                               </span>
                             )}
@@ -1452,7 +1452,7 @@ function CommunityPage() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                <p className="text-xs font-medium text-foreground truncate group-hover:text-brand-red transition-colors">
                                   {member.name}
                                 </p>
                                 <p className="text-[9px] text-muted-foreground truncate">{member.department}</p>
@@ -1629,7 +1629,7 @@ function CommunityPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                          <p className="text-xs font-semibold text-foreground group-hover:text-brand-red transition-colors">
                             {classmate.name}
                           </p>
                           <p className="text-[10px] text-muted-foreground truncate">

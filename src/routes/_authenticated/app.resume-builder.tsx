@@ -3,6 +3,7 @@ import { useState, useCallback, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { tailorResume, getTailoredResumePdf } from "@/lib/resume.functions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -325,10 +326,15 @@ function ResumeTailorerPage() {
     <ChatLayout activeThreadId={null}>
       <div className="h-full overflow-y-auto bg-background text-foreground">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface/80 via-background to-surface/40 px-6 py-10 md:px-10">
-          <div className="absolute -top-32 left-1/2 -z-10 h-[400px] w-[700px] -translate-x-1/2 rounded-full bg-primary/8 blur-[80px]" />
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="relative overflow-hidden border-b border-border bg-gradient-to-br from-surface/80 via-background to-surface/40 px-6 py-10 md:px-10"
+        >
+          <div className="absolute -top-32 left-1/2 -z-10 h-[400px] w-[700px] -translate-x-1/2 rounded-full bg-brand-red/8 blur-[80px]" />
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-red/20 bg-brand-red/5 px-4 py-1.5 text-xs font-semibold text-brand-red">
               <Sparkles className="h-3.5 w-3.5" />
               Powered by Groq AI · Real Job-Description-Driven Tailoring
             </div>
@@ -349,7 +355,7 @@ function ResumeTailorerPage() {
               ].map((step, idx, arr) => (
                 <div key={step.n} className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-red/15 text-[10px] font-bold text-brand-red">
                       {step.n}
                     </span>
                     <span>{step.label}</span>
@@ -361,7 +367,7 @@ function ResumeTailorerPage() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Main Grid */}
         <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
@@ -371,8 +377,8 @@ function ResumeTailorerPage() {
               {/* File Upload */}
               <div className="rounded-2xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
                 <div className="flex items-center gap-3 border-b border-border/60 px-5 py-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                    <Upload className="h-4 w-4 text-primary" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-red/10">
+                    <Upload className="h-4 w-4 text-brand-red" />
                   </div>
                   <div>
                     <h2 className="font-sans text-sm font-semibold">
@@ -395,8 +401,8 @@ function ResumeTailorerPage() {
                       onDragLeave={() => setIsDragOver(false)}
                       className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-12 text-center cursor-pointer transition-all duration-200 ${
                         isDragOver
-                          ? "border-primary bg-primary/5 scale-[1.01]"
-                          : "border-border/60 bg-surface/10 hover:border-primary/50 hover:bg-surface/20"
+                          ? "border-brand-red bg-brand-red/5 scale-[1.01]"
+                          : "border-border/60 bg-surface/10 hover:border-brand-red/50 hover:bg-surface/20"
                       }`}
                     >
                       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted/40">
@@ -407,7 +413,7 @@ function ResumeTailorerPage() {
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Supports <span className="text-foreground font-medium">.pdf, .docx, .doc</span> ·{" "}
-                        <span className="text-primary underline underline-offset-2">
+                        <span className="text-brand-red underline underline-offset-2">
                           click to browse
                         </span>
                       </p>
@@ -451,7 +457,7 @@ function ResumeTailorerPage() {
                       </div>
 
                       {isExtracting && (
-                        <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2.5 text-xs text-primary">
+                        <div className="flex items-center gap-2 rounded-lg bg-brand-red/5 border border-brand-red/20 px-3 py-2.5 text-xs text-brand-red">
                           <Spinner className="h-3.5 w-3.5" />
                           Parsing document text content...
                         </div>
@@ -545,8 +551,8 @@ function ResumeTailorerPage() {
               {/* Empty state */}
               {!tailoredResume && !isTailoring && (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/20 p-12 text-center text-muted-foreground min-h-[400px]">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/5 border border-primary/10">
-                    <Sparkles className="h-8 w-8 text-primary/40" />
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-red/5 border border-brand-red/10">
+                    <Sparkles className="h-8 w-8 text-brand-red/40" />
                   </div>
                   <h3 className="font-display text-base font-semibold text-foreground/60">
                     Your Executive 1-Page Resume Appears Here
@@ -559,10 +565,10 @@ function ResumeTailorerPage() {
 
               {/* Loading state */}
               {isTailoring && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-primary/20 bg-primary/3 p-12 text-center min-h-[400px] gap-5">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-red/20 bg-brand-red/3 p-12 text-center min-h-[400px] gap-5">
                   <div className="relative">
-                    <div className="h-16 w-16 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-                    <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-primary" />
+                    <div className="h-16 w-16 rounded-full border-2 border-brand-red/20 border-t-brand-red animate-spin" />
+                    <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-brand-red" />
                   </div>
                   <div>
                     <p className="font-display font-semibold text-foreground">
@@ -582,7 +588,7 @@ function ResumeTailorerPage() {
                       <Badge
                         key={s}
                         variant="outline"
-                        className="text-[10px] border-primary/20 text-primary/70 animate-pulse"
+                        className="text-[10px] border-brand-red/20 text-brand-red/70 animate-pulse"
                         style={{ animationDelay: `${i * 0.3}s` }}
                       >
                         {s}
@@ -639,8 +645,8 @@ function ResumeTailorerPage() {
                     {/* Header / Contact */}
                     <div className="p-5">
                       <div className="flex items-center gap-2 mb-2">
-                        <User className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                        <User className="h-4 w-4 text-brand-red" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-brand-red">
                           Header & Contact
                         </span>
                       </div>
@@ -648,7 +654,7 @@ function ResumeTailorerPage() {
                         {tailoredResume.header?.fullName}
                       </h3>
                       {tailoredResume.header?.subTitle && (
-                        <p className="text-xs text-primary/80 font-medium mt-0.5">
+                        <p className="text-xs text-brand-red/80 font-medium mt-0.5">
                           {tailoredResume.header.subTitle}
                         </p>
                       )}
@@ -735,7 +741,7 @@ function ResumeTailorerPage() {
                                     key={j}
                                     className="flex gap-1.5 text-[10px] text-muted-foreground leading-relaxed"
                                   >
-                                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-brand-red/60" />
                                     {bullet}
                                   </li>
                                 ))}

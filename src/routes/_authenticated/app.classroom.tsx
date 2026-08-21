@@ -347,9 +347,12 @@ function ClassroomPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800/80 pb-5">
           <div>
             <div className="flex items-center gap-2.5 mb-1">
-              <div className="h-8 w-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 flex items-center justify-center shadow-xs">
+              <motion.div
+                whileHover={{ rotate: -8, scale: 1.08 }}
+                className="h-8 w-8 rounded-xl bg-brand-red text-brand-red-foreground flex items-center justify-center shadow-xs"
+              >
                 <GraduationCap className="h-4 w-4" />
-              </div>
+              </motion.div>
               <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                 Classroom Coursework Ledger
               </h1>
@@ -381,18 +384,19 @@ function ClassroomPage() {
               whileTap={{ scale: 0.96 }}
               onClick={handleSync}
               disabled={isRefreshing}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors shadow-xs disabled:opacity-60"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-brand-red/30 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors shadow-xs disabled:opacity-60"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-zinc-900 dark:text-zinc-100" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-brand-red" : ""}`} />
               <span>{isRefreshing ? "Syncing..." : "Sync Live"}</span>
             </motion.button>
 
             <motion.button
+              whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.96 }}
               id="demo-sms-btn"
               onClick={handleDemoSms}
               disabled={isSendingDemoSms}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs disabled:opacity-70"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-brand-red text-brand-red-foreground text-xs font-semibold hover:opacity-90 shadow-sm shadow-brand-red/20 transition-[opacity,box-shadow] disabled:opacity-70"
             >
               {isSendingDemoSms ? (
                 <Send className="h-3.5 w-3.5 animate-bounce" />
@@ -404,9 +408,10 @@ function ClassroomPage() {
 
             {!isConnected && (
               <motion.button
+                whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={handleConnectGoogle}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-brand-gold text-brand-gold-foreground text-xs font-semibold hover:opacity-90 shadow-sm shadow-brand-gold/20 transition-[opacity,box-shadow]"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Connect Google</span>
@@ -418,18 +423,18 @@ function ClassroomPage() {
         {/* ─── Metric Matrix ─────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {[
-            { label: "Action Needed", count: counts.overdue, desc: "Overdue Submissions", icon: AlertTriangle, color: "text-red-500" },
+            { label: "Action Needed", count: counts.overdue, desc: "Overdue Submissions", icon: AlertTriangle, color: "text-brand-red" },
             { label: "Due Soon", count: counts.pending, desc: "Pending Coursework", icon: Clock, color: "text-amber-500" },
             { label: "Turned In", count: counts.completed, desc: "Submitted / Graded", icon: CheckCircle2, color: "text-emerald-500" },
-            { label: "Enrolled Courses", count: counts.courses, desc: "Active Classroom Subjects", icon: BookOpen, color: "text-zinc-600 dark:text-zinc-300" },
+            { label: "Enrolled Courses", count: counts.courses, desc: "Active Classroom Subjects", icon: BookOpen, color: "text-brand-gold" },
           ].map((card, idx) => {
             const Icon = card.icon;
             return (
               <motion.div
                 key={idx}
-                whileHover={{ y: -2 }}
+                whileHover={{ y: -3, scale: 1.015 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 p-4 shadow-xs flex flex-col justify-between"
+                className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 hover:border-brand-red/30 bg-white/90 dark:bg-zinc-900/90 p-4 shadow-xs flex flex-col justify-between transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[9px] uppercase tracking-wider font-semibold text-zinc-400">
@@ -464,9 +469,9 @@ function ClassroomPage() {
                   setActiveTab(tab.id as any);
                   setSelectedCourse("ALL");
                 }}
-                className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
+                className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] ${
                   activeTab === tab.id
-                    ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 shadow-xs"
+                    ? "bg-brand-red text-brand-red-foreground shadow-sm shadow-brand-red/20"
                     : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
               >
@@ -558,10 +563,10 @@ function ClassroomPage() {
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     className={`group relative rounded-2xl border p-4 md:p-5 bg-white/90 dark:bg-zinc-900/90 transition-all shadow-xs ${
                       isOverdue
-                        ? "border-red-300 dark:border-red-900/60 bg-red-50/20 dark:bg-red-950/10"
+                        ? "border-brand-red/40 bg-brand-red/5"
                         : isReviewed
                         ? "opacity-60 border-zinc-200 dark:border-zinc-800"
-                        : "border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600"
+                        : "border-zinc-200/80 dark:border-zinc-800/80 hover:border-brand-red/30"
                     }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -574,7 +579,7 @@ function ClassroomPage() {
                           </span>
 
                           {isOverdue && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-brand-red/10 text-brand-red border border-brand-red/25">
                               <AlertTriangle className="h-3 w-3" />
                               Missing / Overdue
                             </span>
