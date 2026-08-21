@@ -4,88 +4,119 @@
  * (not CUE's internal API — avoids CORS/token-shape guessing entirely,
  * reads exactly what a human sees) and pushes it to AcadSphere.
  *
- * Scraping is text-pattern based, not CSS-class based: production React
- * builds hash their class names, so anchoring on the actual label text
- * ("hours attended", "Overall Attendance", "Theory"/"Practical") is the
- * only approach that survives CUE re-deploying their frontend.
+ * Scraping is element-textContent based, not raw Text-node or CSS-class
+ * based: production React builds hash their class names (so those can't be
+ * targeted), and a value like "{attended} of {total} hours attended" gets
+ * split into several sibling text fragments by React's interpolation — no
+ * single Text node contains the full phrase, but `element.textContent`
+ * always concatenates every descendant fragment regardless of how many
+ * spans/interpolations it's broken into, so matching against an element's
+ * full normalized text is what actually survives that.
  */
 
 const SYNC_URL = "https://jlyembaddiyakxuvaflq.supabase.co/functions/v1/sync-attendance";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpseWVtYmFkZGl5YWt4dXZhZmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxODg3NzEsImV4cCI6MjA5Nzc2NDc3MX0.ffmK3h29al3O7PksBWXzdjEoy7TbnLOmkUSHMatq1P0";
 
+const LOG = (...args) => console.log("[AcadSphere Sync]", ...args);
+
 // ── DOM text-walking helpers ────────────────────────────────────────────────
-function leafTextNodes(root) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const out = [];
-  let node;
-  while ((node = walker.nextNode())) {
-    const t = node.textContent.replace(/\s+/g, " ").trim();
-    if (t) out.push({ text: t, el: node.parentElement, node });
-  }
-  return out;
+function normText(s) {
+  return s.replace(/\s+/g, " ").trim();
 }
 
+function elementsWithText(root) {
+  return Array.from(root.querySelectorAll("*"))
+    .map((el) => ({ el, text: normText(el.textContent || "") }))
+    .filter((x) => x.text.length > 0);
+}
+
+// Elements whose ENTIRE own text matches `regex` exactly, deduped to keep
+// only the most deeply nested match (a huge ancestor whose combined text
+// happens to equal the pattern — rare given ^...$ anchoring, but be safe).
+function findExactMatches(root, regex) {
+  const matches = elementsWithText(root).filter((x) => regex.test(x.text));
+  return matches.filter((m) => !matches.some((other) => other !== m && m.el.contains(other.el)));
+}
+
+// True DOM leaves: elements with no child elements (only text/inline
+// interpolation fragments inside) — used for course-name extraction, since
+// there's no fixed keyword to anchor a course title on.
+function leafElements(root) {
+  return elementsWithText(root).filter((x) => x.el.children.length === 0);
+}
+
+// Walk up from `startEl` until an ancestor's full text satisfies `predicate`
+// (used to find the "card" boundary around a matched value).
 function findAncestorContaining(startEl, predicate, maxLevels = 8) {
   let el = startEl;
   for (let i = 0; i < maxLevels && el; i++) {
-    const texts = leafTextNodes(el).map((n) => n.text);
-    if (predicate(texts)) return el;
+    if (predicate(normText(el.textContent || ""))) return el;
     el = el.parentElement;
   }
   return null;
 }
 
+// ── Patterns ─────────────────────────────────────────────────────────────────
 const PCT_RE = /^(\d{1,3}(?:\.\d+)?)\s*%$/;
+const PCT_CONTAINS_RE = /\d{1,3}(?:\.\d+)?\s*%/;
 const HOURS_ATTENDED_RE = /^(\d+)\s+of\s+(\d+)\s+hours?\s+attended$/i;
 const TYPE_RE = /(Theory|Practical|Lab)/i;
 const HRS_ONLY_RE = /^(\d+(?:\.\d+)?)\s*hrs?$/i;
-const FRACTION_HRS_RE = /(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*hrs?/i;
+const HRS_CONTAINS_RE = /\d+(?:\.\d+)?\s*hrs?/i;
 
 // ── Scrape course-wise cards from the "Course Overview" tab ────────────────
 function scrapeCourseWise() {
-  const all = leafTextNodes(document.body);
-  const anchors = all.filter((n) => HOURS_ATTENDED_RE.test(n.text));
+  const anchors = findExactMatches(document.body, HOURS_ATTENDED_RE);
+  LOG(`scrapeCourseWise: found ${anchors.length} "X of Y hours attended" anchor(s)`);
   const results = [];
   const seen = new Set();
 
   for (const anchor of anchors) {
     const card = findAncestorContaining(
       anchor.el,
-      (texts) => texts.some((t) => PCT_RE.test(t)) && texts.some((t) => TYPE_RE.test(t)),
+      (text) => PCT_CONTAINS_RE.test(text) && TYPE_RE.test(text),
       8
     );
-    if (!card) continue;
+    if (!card) {
+      LOG("  ↳ skipped anchor (no card ancestor with % + Theory/Practical found):", anchor.text);
+      continue;
+    }
 
-    const texts = leafTextNodes(card);
     const hoursMatch = anchor.text.match(HOURS_ATTENDED_RE);
     const attended = Number(hoursMatch[1]);
     const total = Number(hoursMatch[2]);
 
-    const pctNode = texts.find((n) => PCT_RE.test(n.text));
-    const typeLineNode = texts.find((n) => TYPE_RE.test(n.text) && n.text !== anchor.text);
+    // Percentage badge: smallest element whose whole text is just "NN.NN%".
+    const pctEl = findExactMatches(card, PCT_RE)[0];
 
-    if (!typeLineNode) continue;
-    const typeMatch = typeLineNode.text.match(TYPE_RE);
-    const type = typeMatch[1];
-    // Code is whatever precedes the type keyword, minus separators.
-    const code = typeLineNode.text
-      .split(TYPE_RE)[0]
-      .replace(/[•·|]/g, " ")
-      .trim() || "N/A";
+    // Code + type line: shortest element containing the type keyword (the
+    // shortest one is the badge itself, not some larger wrapper around it).
+    const typeCandidates = elementsWithText(card)
+      .filter((x) => TYPE_RE.test(x.text) && x.text.length <= 40)
+      .sort((a, b) => a.text.length - b.text.length);
+    const typeLine = typeCandidates[0];
+    if (!typeLine) {
+      LOG("  ↳ skipped anchor (no code/type line found in card):", anchor.text);
+      continue;
+    }
 
-    // Course name: the first substantial, non-numeric leaf text in the card
-    // that isn't the hours line, the % badge, or the code/type line.
-    const nameNode = texts.find(
-      (n) =>
-        n.text !== anchor.text &&
-        n !== pctNode &&
-        n.text !== typeLineNode.text &&
-        n.text.length >= 3 &&
-        !/^\d+$/.test(n.text) &&
-        !PCT_RE.test(n.text)
+    const type = typeLine.text.match(TYPE_RE)[1];
+    const code = typeLine.text.split(TYPE_RE)[0].replace(/[•·|]/g, " ").trim() || "N/A";
+
+    // Course name: first true DOM leaf in the card, in document order, that
+    // isn't the hours line, % badge, or code/type line, and looks like a
+    // real title rather than a stray number or icon glyph.
+    const nameLeaf = leafElements(card).find(
+      (x) =>
+        x.text !== anchor.text &&
+        (!pctEl || x.el !== pctEl.el) &&
+        x.text !== typeLine.text &&
+        x.text.length >= 3 &&
+        !/^\d+$/.test(x.text) &&
+        !PCT_RE.test(x.text)
     );
-    const name = nameNode ? nameNode.text : code;
+    const name = nameLeaf ? nameLeaf.text : code;
 
     const key = `${code}-${type}`.toLowerCase();
     if (seen.has(key)) continue;
@@ -97,30 +128,26 @@ function scrapeCourseWise() {
       type,
       attended,
       total,
-      percentage: pctNode ? Number(pctNode.text.match(PCT_RE)[1]) : (total > 0 ? Math.round((attended / total) * 10000) / 100 : 100),
+      percentage: pctEl ? Number(pctEl.text.match(PCT_RE)[1]) : (total > 0 ? Math.round((attended / total) * 10000) / 100 : 100),
     });
   }
 
+  LOG(`scrapeCourseWise: parsed ${results.length} course card(s)`, results);
   return results;
 }
 
 // ── Scrape the overall Present/Absent summary cards ─────────────────────────
 function scrapeOverall() {
-  const all = leafTextNodes(document.body);
-
   function nearHrs(labelText) {
-    const label = all.find((n) => n.text.toLowerCase() === labelText.toLowerCase());
-    if (!label) return null;
-    const card = findAncestorContaining(label.el, (texts) => texts.some((t) => HRS_ONLY_RE.test(t)), 5);
+    const labelMatches = findExactMatches(document.body, new RegExp(`^${labelText}$`, "i"));
+    if (labelMatches.length === 0) return null;
+    const card = findAncestorContaining(labelMatches[0].el, (text) => HRS_CONTAINS_RE.test(text), 5);
     if (!card) return null;
-    const hrsNode = leafTextNodes(card).find((n) => HRS_ONLY_RE.test(n.text) && n.text !== labelText);
-    return hrsNode ? Number(hrsNode.text.match(HRS_ONLY_RE)[1]) : null;
+    const hrsMatches = findExactMatches(card, HRS_ONLY_RE);
+    return hrsMatches.length > 0 ? Number(hrsMatches[0].text.match(HRS_ONLY_RE)[1]) : null;
   }
 
-  return {
-    present: nearHrs("Present"),
-    absent: nearHrs("Absent"),
-  };
+  return { present: nearHrs("Present"), absent: nearHrs("Absent") };
 }
 
 // ── Best-effort day-wise scrape from the "Daily Log" tab ────────────────────
@@ -130,8 +157,7 @@ const STATUS_RE = /^(present|absent|holiday|cancelled)$/i;
 
 function parseDateGuess(text) {
   const d = new Date(text.replace(",", ""));
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
 async function clickTabByText(text) {
@@ -147,40 +173,49 @@ async function clickTabByText(text) {
 async function scrapeDailyLog() {
   try {
     const switched = await clickTabByText("Daily Log");
-    if (!switched) return [];
+    if (!switched) {
+      LOG("scrapeDailyLog: no 'Daily Log' tab found — skipping day-wise sync");
+      return [];
+    }
 
-    const all = leafTextNodes(document.body);
-    const dateNodes = all.filter((n) => DATE_RE.test(n.text));
-    if (dateNodes.length === 0) return [];
+    const dateMatches = findExactMatches(document.body, DATE_RE);
+    LOG(`scrapeDailyLog: found ${dateMatches.length} date-like element(s)`);
+    if (dateMatches.length === 0) {
+      await clickTabByText("Course Overview");
+      return [];
+    }
 
     const records = [];
-    for (const dn of dateNodes) {
-      const date = parseDateGuess(dn.text);
+    for (const dateMatch of dateMatches) {
+      const date = parseDateGuess(dateMatch.text);
       if (!date) continue;
-      const container = findAncestorContaining(
-        dn.el,
-        (texts) => texts.some((t) => STATUS_RE.test(t)),
-        6
-      );
+
+      const container = findAncestorContaining(dateMatch.el, (text) => STATUS_RE.test(text) || /present|absent|holiday|cancelled/i.test(text), 6);
       if (!container) continue;
-      const texts = leafTextNodes(container);
-      const statusNode = texts.find((n) => STATUS_RE.test(n.text));
-      const subjectNode = texts.find(
-        (n) => TYPE_RE.test(n.text) === false && n.text !== dn.text && n.text !== statusNode?.text && n.text.length >= 3 && !/^\d+$/.test(n.text)
+
+      const statusEl = findExactMatches(container, STATUS_RE)[0]
+        || elementsWithText(container).find((x) => /present|absent|holiday|cancelled/i.test(x.text) && x.text.length <= 20);
+      if (!statusEl) continue;
+      const status = (statusEl.text.match(/present|absent|holiday|cancelled/i)?.[0] || "").toLowerCase();
+      if (!status) continue;
+
+      const subjectLeaf = leafElements(container).find(
+        (x) => x.text !== dateMatch.text && x.text !== statusEl.text && x.text.length >= 3 && !/^\d+$/.test(x.text)
       );
-      if (!statusNode) continue;
+
       records.push({
         date,
-        status: statusNode.text.toLowerCase(),
-        subjectCode: subjectNode ? subjectNode.text.slice(0, 40) : "UNKNOWN",
-        subjectName: subjectNode ? subjectNode.text : undefined,
+        status,
+        subjectCode: subjectLeaf ? subjectLeaf.text.slice(0, 40) : "UNKNOWN",
+        subjectName: subjectLeaf ? subjectLeaf.text : undefined,
       });
     }
 
     await clickTabByText("Course Overview"); // restore original view
+    LOG(`scrapeDailyLog: parsed ${records.length} record(s)`);
     return records;
   } catch (e) {
-    console.warn("[AcadSphere] Daily log scrape skipped:", e);
+    console.warn("[AcadSphere Sync] Daily log scrape skipped:", e);
     return [];
   }
 }
@@ -196,7 +231,7 @@ async function runSync(setStatus) {
   setStatus("working", "Scraping course-wise attendance…");
   const courseWise = scrapeCourseWise();
   if (courseWise.length === 0) {
-    setStatus("error", "Couldn't find any course cards on this page. Make sure you're on the Attendance → Course Overview tab.");
+    setStatus("error", "Couldn't find any course cards on this page. Make sure you're on the Attendance → Course Overview tab. (Open DevTools console for details — look for '[AcadSphere Sync]' lines.)");
     return { ok: false };
   }
 
