@@ -272,6 +272,17 @@ export const upsertTimetable = createServerFn({ method: "POST" })
     if (!supabaseServer) throw new Error("Database unavailable");
     if (!caller.section) throw new Error("Your account has no section set.");
 
+    // Full replace, not an upsert: the editor sends the *complete* current
+    // grid every save, so a cell the CR cleared needs its old row deleted,
+    // not left stale. Delete-then-insert rather than a partial upsert.
+    const { error: delErr } = await supabaseServer
+      .from("class_timetables")
+      .delete()
+      .eq("section", caller.section);
+    if (delErr) throw new Error(`Timetable save failed: ${delErr.message}`);
+
+    if (data.rows.length === 0) return { ok: true, count: 0 };
+
     const rows = data.rows.map((r) => ({
       section: caller.section,
       day_of_week: r.dayOfWeek,
@@ -284,9 +295,7 @@ export const upsertTimetable = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     }));
 
-    const { error } = await supabaseServer
-      .from("class_timetables")
-      .upsert(rows, { onConflict: "section,day_of_week,period_number" });
+    const { error } = await supabaseServer.from("class_timetables").insert(rows);
     if (error) throw new Error(`Timetable save failed: ${error.message}`);
     return { ok: true, count: rows.length };
   });

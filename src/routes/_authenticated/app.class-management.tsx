@@ -4,20 +4,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import {
-  listMySectionStudents, getTimetable, upsertTimetable, type TimetableRow,
+  listMySectionStudents, getTimetable, upsertTimetable,
 } from "@/lib/class-roles.functions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Layers, Calendar, Users, ClipboardList, Loader2, Save, Plus, Trash2 } from "lucide-react";
+import { Layers, Calendar, Users, ClipboardList, Loader2, Save } from "lucide-react";
+import { TIME_SLOTS, DAYS_OF_WEEK, slotWeight } from "@/lib/timetable-slots";
 
 export const Route = createFileRoute("/_authenticated/app/class-management")({
   component: ClassManagementPage,
 });
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function ClassManagementPage() {
   const qc = useQueryClient();
@@ -37,53 +35,45 @@ function ClassManagementPage() {
     queryFn: () => getTimetableFn(),
   });
 
-  const [rows, setRows] = useState<TimetableRow[] | null>(null);
-  const activeRows = rows ?? savedTimetable;
+  // Grid state: cellText[day][slotIndex] — edited in place, saved as a batch.
+  const [grid, setGrid] = useState<Record<string, string[]> | null>(null);
+
+  const savedGrid = useMemo(() => {
+    const g: Record<string, string[]> = {};
+    for (const d of DAYS_OF_WEEK) g[d] = TIME_SLOTS.map(() => "");
+    for (const r of savedTimetable) {
+      if (g[r.dayOfWeek] && r.periodNumber >= 0 && r.periodNumber < TIME_SLOTS.length) {
+        g[r.dayOfWeek][r.periodNumber] = r.subjectName;
+      }
+    }
+    return g;
+  }, [savedTimetable]);
+
+  const activeGrid = grid ?? savedGrid;
+  const setCell = (day: string, slotIndex: number, value: string) => {
+    const next = { ...activeGrid, [day]: [...activeGrid[day]] };
+    next[day][slotIndex] = value;
+    setGrid(next);
+  };
 
   const saveMut = useMutation({
-    mutationFn: () =>
-      upsertFn({
-        data: {
-          rows: activeRows.map((r) => ({
-            dayOfWeek: r.dayOfWeek,
-            periodNumber: r.periodNumber,
-            startTime: r.startTime || undefined,
-            endTime: r.endTime || undefined,
-            subjectCode: r.subjectCode || undefined,
-            subjectName: r.subjectName,
-          })),
-        },
-      }),
+    mutationFn: () => {
+      const rows: { dayOfWeek: string; periodNumber: number; subjectName: string }[] = [];
+      for (const day of DAYS_OF_WEEK) {
+        TIME_SLOTS.forEach((slot, i) => {
+          const text = activeGrid[day]?.[i]?.trim();
+          if (text) rows.push({ dayOfWeek: day, periodNumber: slot.index, subjectName: text });
+        });
+      }
+      return upsertFn({ data: { rows } });
+    },
     onSuccess: () => {
       toast.success("Timetable saved — visible to your class in the Attendance page.");
       qc.invalidateQueries({ queryKey: ["classTimetable"] });
-      setRows(null);
+      setGrid(null);
     },
     onError: (err: any) => toast.error(err.message || "Save failed"),
   });
-
-  const addRow = () => {
-    setRows([...activeRows, { dayOfWeek: "Monday", periodNumber: activeRows.length + 1, startTime: "", endTime: "", subjectCode: "", subjectName: "" }]);
-  };
-  const updateRow = (i: number, patch: Partial<TimetableRow>) => {
-    const next = [...activeRows];
-    next[i] = { ...next[i], ...patch };
-    setRows(next);
-  };
-  const removeRow = (i: number) => {
-    setRows(activeRows.filter((_, idx) => idx !== i));
-  };
-
-  const byDay = useMemo(() => {
-    const map = new Map<string, typeof activeRows>();
-    for (const d of DAYS) map.set(d, []);
-    for (const r of activeRows) {
-      const list = map.get(r.dayOfWeek) ?? [];
-      list.push(r);
-      map.set(r.dayOfWeek, list);
-    }
-    return map;
-  }, [activeRows]);
 
   return (
     <ChatLayout activeThreadId={null}>
@@ -130,43 +120,51 @@ function ClassManagementPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Upload once per semester (or whenever it changes) — every student in your section sees this from their Attendance page.
+                  Edit any cell, then Save — every student in your section sees this from their Attendance page.
+                  First period counts as 2 hours for attendance (1 hour on Saturday); every other period counts as 1.
                 </p>
-                <div className="flex gap-2 shrink-0">
-                  <Button size="sm" variant="outline" onClick={addRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Period</Button>
-                  <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="gap-1">
-                    {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
-                  </Button>
-                </div>
+                <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="gap-1 shrink-0">
+                  {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
+                </Button>
               </div>
 
               {ttLoading ? (
                 <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 text-muted-foreground animate-spin" /></div>
-              ) : activeRows.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-16">No timetable yet — click "Add Period" to start.</p>
               ) : (
-                <div className="space-y-2">
-                  {activeRows.map((r, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-3 flex flex-wrap items-center gap-2">
-                        <select
-                          value={r.dayOfWeek}
-                          onChange={(e) => updateRow(i, { dayOfWeek: e.target.value })}
-                          className="h-8 px-2 rounded-lg border border-border bg-background text-xs"
-                        >
-                          {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <Input type="number" min={1} value={r.periodNumber} onChange={(e) => updateRow(i, { periodNumber: Number(e.target.value) || 1 })} className="h-8 w-16 text-xs" placeholder="Period" />
-                        <Input value={r.startTime || ""} onChange={(e) => updateRow(i, { startTime: e.target.value })} className="h-8 w-24 text-xs" placeholder="Start" />
-                        <Input value={r.endTime || ""} onChange={(e) => updateRow(i, { endTime: e.target.value })} className="h-8 w-24 text-xs" placeholder="End" />
-                        <Input value={r.subjectCode || ""} onChange={(e) => updateRow(i, { subjectCode: e.target.value })} className="h-8 w-28 text-xs" placeholder="Code" />
-                        <Input required value={r.subjectName} onChange={(e) => updateRow(i, { subjectName: e.target.value })} className="h-8 flex-1 min-w-[140px] text-xs" placeholder="Subject name" />
-                        <button onClick={() => removeRow(i)} className="p-1.5 rounded-lg hover:bg-brand-red/10 text-muted-foreground hover:text-brand-red">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="overflow-x-auto rounded-2xl border border-border">
+                  <table className="w-full text-xs border-collapse min-w-[720px]">
+                    <thead>
+                      <tr className="bg-muted/60">
+                        <th className="text-left p-2.5 font-bold text-foreground border-b border-border w-24">Day</th>
+                        {TIME_SLOTS.map((slot) => (
+                          <th key={slot.index} className="text-center p-2.5 font-mono text-[10px] text-muted-foreground border-b border-border">
+                            {slot.label}
+                            <div className="text-[9px] text-brand-red font-bold mt-0.5">
+                              {slotWeight("Monday", slot.index)}h{slot.index === 0 ? " (Sat: 1h)" : ""}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DAYS_OF_WEEK.map((day) => (
+                        <tr key={day} className="border-b border-border/60 last:border-0">
+                          <td className="p-2.5 font-bold text-foreground bg-muted/30">{day}</td>
+                          {TIME_SLOTS.map((slot) => (
+                            <td key={slot.index} className="p-1.5 align-top">
+                              <textarea
+                                value={activeGrid[day]?.[slot.index] || ""}
+                                onChange={(e) => setCell(day, slot.index, e.target.value)}
+                                rows={2}
+                                placeholder="—"
+                                className="w-full min-w-[110px] resize-none rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-red/40 focus:border-brand-red/40"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </motion.div>

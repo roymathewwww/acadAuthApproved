@@ -14,10 +14,11 @@ import {
   regenerateSyncToken,
 } from "@/lib/attendance.functions";
 import { getTimetable } from "@/lib/class-roles.functions";
+import { TIME_SLOTS, DAYS_OF_WEEK, slotWeight, isSubjectCell, cellMatchesSubject } from "@/lib/timetable-slots";
 import {
   Clock, CheckCircle2, XCircle, BookOpen, RefreshCw, Puzzle, Copy, Check,
   ChevronDown, ChevronRight, Calendar, TrendingUp, ShieldCheck, ShieldAlert,
-  KeyRound, Loader2, Wifi, WifiOff,
+  KeyRound, Loader2, Wifi, WifiOff, Calculator, ArrowRight,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/attendance")({
@@ -42,6 +43,8 @@ function AttendancePage() {
   const [copied, setCopied] = useState(false);
   const [logExpanded, setLogExpanded] = useState(false);
   const [timetableExpanded, setTimetableExpanded] = useState(false);
+  const [impactExpanded, setImpactExpanded] = useState(false);
+  const [impactDay, setImpactDay] = useState<string | null>(null);
 
   const { data: timetable = [] } = useQuery({
     queryKey: ["classTimetable"],
@@ -83,6 +86,48 @@ function AttendancePage() {
   const subjects = data?.subjects ?? [];
   const daily = data?.daily ?? [];
   const hasData = subjects.length > 0;
+
+  // ── Gain/lose attendance calculator, driven by the real timetable ────────
+  // Matches each timetable cell to a real synced subject by leading-code/
+  // initials (e.g. "CC(NS)" -> "Cloud Computing"), weights each match by the
+  // 2h-first-period rule, and projects the effect of attending/skipping.
+  const subjectImpacts = useMemo(() => {
+    return subjects.map((s) => {
+      const occurrences: { day: string; hours: number }[] = [];
+      for (const cell of timetable) {
+        if (!isSubjectCell(cell.subjectName)) continue;
+        if (cellMatchesSubject(cell.subjectName, s.name, s.code)) {
+          occurrences.push({ day: cell.dayOfWeek, hours: slotWeight(cell.dayOfWeek, cell.periodNumber) });
+        }
+      }
+      const weeklyHours = occurrences.reduce((sum, o) => sum + o.hours, 0);
+      const pctIfAttendAllWeek = weeklyHours > 0
+        ? Number((((s.attended + weeklyHours) / (s.conducted + weeklyHours)) * 100).toFixed(2))
+        : null;
+      const pctIfSkipAllWeek = weeklyHours > 0
+        ? Number(((s.attended / (s.conducted + weeklyHours)) * 100).toFixed(2))
+        : null;
+      return { ...s, weeklyHours, occurrences, pctIfAttendAllWeek, pctIfSkipAllWeek };
+    }).filter((s) => s.weeklyHours > 0);
+  }, [subjects, timetable]);
+
+  const dayImpacts = useMemo(() => {
+    return DAYS_OF_WEEK.map((day) => {
+      const affected: { name: string; hours: number }[] = [];
+      let totalHours = 0;
+      for (const s of subjectImpacts) {
+        const hoursToday = s.occurrences.filter((o) => o.day === day).reduce((sum, o) => sum + o.hours, 0);
+        if (hoursToday > 0) {
+          affected.push({ name: s.name, hours: hoursToday });
+          totalHours += hoursToday;
+        }
+      }
+      const overallPctIfSkipped = overall && totalHours > 0
+        ? Number(((overall.totalAttended / (overall.totalConducted + totalHours)) * 100).toFixed(2))
+        : null;
+      return { day, totalHours, affected, overallPctIfSkipped };
+    }).filter((d) => d.totalHours > 0);
+  }, [subjectImpacts, overall]);
 
   const dailyByDate = useMemo(() => {
     const groups = new Map<string, typeof daily>();
@@ -448,6 +493,110 @@ function AttendancePage() {
                         </Card>
                       ))}
                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* ── Attendance Impact Calculator ── */}
+          {subjectImpacts.length > 0 && (
+            <div>
+              <button
+                onClick={() => setImpactExpanded((v) => !v)}
+                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 hover:text-foreground transition-colors"
+              >
+                {impactExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                <Calculator className="h-3.5 w-3.5" /> Attendance Impact Calculator
+              </button>
+              <AnimatePresence>
+                {impactExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden space-y-4"
+                  >
+                    <p className="text-[10px] text-muted-foreground/80">
+                      Computed from your class's timetable matched against your synced subjects — the first period counts as 2 hours (1 on Saturday), every other period counts as 1.
+                    </p>
+
+                    {/* Per-subject */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {subjectImpacts.map((s) => (
+                        <Card key={s.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs font-bold text-foreground">{s.name}</p>
+                              <span className="text-[10px] font-mono text-muted-foreground">{s.weeklyHours}h/week</span>
+                            </div>
+                            <div className="space-y-1.5 text-[11px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-muted-foreground w-28 shrink-0">Attend this week</span>
+                                <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
+                                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.pctIfAttendAllWeek?.toFixed(2)}%</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-muted-foreground w-28 shrink-0">Skip this week</span>
+                                <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
+                                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <span className="font-bold text-brand-red">{s.pctIfSkipAllWeek?.toFixed(2)}%</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Whole-day skip */}
+                    {dayImpacts.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-foreground mb-2">If you skip an entire day…</p>
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {dayImpacts.map((d) => (
+                            <button
+                              key={d.day}
+                              onClick={() => setImpactDay(impactDay === d.day ? null : d.day)}
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                impactDay === d.day
+                                  ? "bg-brand-red text-brand-red-foreground border-brand-red"
+                                  : "bg-card border-border text-muted-foreground hover:border-brand-red/40 hover:text-foreground"
+                              }`}
+                            >
+                              {d.day}
+                            </button>
+                          ))}
+                        </div>
+                        {impactDay && (() => {
+                          const d = dayImpacts.find((x) => x.day === impactDay)!;
+                          return (
+                            <Card>
+                              <CardContent className="p-4">
+                                <p className="text-[11px] text-muted-foreground mb-2">
+                                  Skipping all of <strong className="text-foreground">{d.day}</strong> ({d.totalHours}h) affects:
+                                </p>
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {d.affected.map((a, i) => (
+                                    <span key={i} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-muted text-foreground border border-border">
+                                      {a.name} ({a.hours}h)
+                                    </span>
+                                  ))}
+                                </div>
+                                {d.overallPctIfSkipped !== null && overall && (
+                                  <div className="flex items-center gap-1.5 text-xs">
+                                    <span className="text-muted-foreground">Overall attendance</span>
+                                    <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    <span className="font-bold text-brand-red">{d.overallPctIfSkipped.toFixed(2)}%</span>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
