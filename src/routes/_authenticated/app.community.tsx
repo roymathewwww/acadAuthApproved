@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveDepartment } from "@/lib/derive-department";
 import {
   Users, MessageSquare, Heart, Plus, Search, Circle, Send, X,
   CheckCheck, MessageCircle, RefreshCw, UserCheck, UserPlus, Hash,
@@ -182,7 +183,7 @@ function CommunityPage() {
           id: p.id,
           name: p.full_name || p.email?.split("@")[0] || "Student",
           initials: getInitials(p.full_name || p.email?.split("@")[0] || "ST"),
-          department: p.degree || "MSc Big Data Analytics",
+          department: p.degree || deriveDepartment(p.email),
           activity: p.target_role ? `Goal: ${p.target_role}` : "Active Student",
           status: "offline" as const,
         }));

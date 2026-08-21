@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveDepartment } from "@/lib/derive-department";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -114,8 +115,7 @@ function AuthenticatedLayout() {
                 id: user.id,
                 full_name: fullName,
                 avatar_url: avatarUrl,
-                degree: "MSc Big Data Analytics",
-                target_role: "Software Engineer / Data Scientist",
+                degree: deriveDepartment(user.email),
                 updated_at: new Date().toISOString(),
               },
             ])

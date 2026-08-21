@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { localDemoLogin } from "@/lib/auth.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { deriveDepartment } from "@/lib/derive-department";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,8 +61,7 @@ function AuthPage() {
             {
               id: user.id,
               full_name: fullName,
-              degree: "MSc Big Data Analytics",
-              target_role: "Software Engineer / Data Scientist",
+              degree: deriveDepartment(user.email),
               updated_at: new Date().toISOString(),
             },
           ])
@@ -199,7 +199,7 @@ function AuthPage() {
               {
                 id: user.id,
                 full_name: user.user_metadata?.full_name || trimmedEmail.split("@")[0],
-                degree: "MSc Big Data Analytics",
+                degree: deriveDepartment(user.email || trimmedEmail),
                 updated_at: new Date().toISOString(),
               },
             ]);

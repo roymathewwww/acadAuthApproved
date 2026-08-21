@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportError } from "../lib/error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { deriveDepartment } from "@/lib/derive-department";
 
 function NotFoundComponent() {
   return (
@@ -193,8 +194,7 @@ function syncSessionToLocal(session: any) {
         id: user.id,
         full_name: fullName,
         avatar_url: avatarUrl,
-        degree: "MSc Big Data Analytics",
-        target_role: "Software Engineer / Data Scientist",
+        degree: deriveDepartment(user.email),
         updated_at: new Date().toISOString(),
       }
     ]).then(() => {});

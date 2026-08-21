@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import dns from "node:dns";
 import crypto from "node:crypto";
+import { deriveDepartment } from "./derive-department";
 
 // DNS patch to bypass local getaddrinfo failures for Supabase domain
 const originalLookup = dns.lookup;
@@ -441,7 +442,7 @@ export function ensureUserExistsInSqlite(userId: string, email?: string, name?: 
       const userEmail = email || `${userId}@acadsphere.local`;
       const pwHash = crypto.createHash("sha256").update(userId).digest("hex");
       database.prepare("INSERT OR IGNORE INTO users (id, email, password_hash, status) VALUES (?, ?, ?, 'active')").run(userId, userEmail, pwHash);
-      database.prepare("INSERT OR IGNORE INTO profiles (id, full_name, role, degree, semester, target_role) VALUES (?, ?, 'student', 'MSc Big Data Analytics', 'Semester 4', 'Software Engineer')").run(userId, name || "Student");
+      database.prepare("INSERT OR IGNORE INTO profiles (id, full_name, role, degree) VALUES (?, ?, 'student', ?)").run(userId, name || "Student", deriveDepartment(userEmail));
     }
   } catch (err) {
     console.warn("[SQLite] ensureUserExistsInSqlite failed:", err);

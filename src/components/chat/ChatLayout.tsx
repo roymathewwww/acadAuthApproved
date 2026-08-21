@@ -160,7 +160,6 @@ export function ChatLayout({
     { label: "File Converter",  to: "/app/conversions",    icon: FileOutput },
     { label: "Community",       to: "/app/community",      icon: Users },
     { label: "Profile",         to: "/app/profile",        icon: User },
-    { label: "Settings",        to: "/app/settings",       icon: Settings },
   ];
 
   // Administrator navigation items
@@ -443,14 +442,16 @@ export function ChatLayout({
                         {isAdmin ? "Admin Center" : "Profile & Credentials"}
                       </Link>
 
-                      <Link
-                        to={isAdmin ? "/admin/settings" : "/app/settings"}
-                        onClick={() => setShowProfileMenu(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                        Preferences & Integrations
-                      </Link>
+                      {isAdmin && (
+                        <Link
+                          to="/admin/settings"
+                          onClick={() => setShowProfileMenu(false)}
+                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                          Preferences & Integrations
+                        </Link>
+                      )}
 
                       <div className="border-t border-border mt-1 pt-1">
                         <button

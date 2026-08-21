@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/integrations/supabase/supabase.server";
 import { createDefaultMetrics, getStudentMetrics, updateStudentMetrics } from "./student-metrics/student-metrics.functions";
 import { getDb, getSupabaseServerClient, ensureUserExistsInSqlite } from "./db.server";
+import { deriveDepartment } from "./derive-department";
 import crypto from "node:crypto";
 
 const LogActivitySchema = z.object({
@@ -64,19 +65,20 @@ export const getAnalyticsSummary = createServerFn({ method: "GET" })
         let { data } = await supabaseServer.from("profiles").select("*").eq("id", userId).single();
         if (!data) {
           let nameFromAuth = "Christ Student";
+          let emailFromAuth: string | null = null;
           try {
             const { data: authUser } = await supabaseServer.auth.admin.getUserById(userId);
             if (authUser?.user) {
               const meta = authUser.user.user_metadata || {};
               nameFromAuth = meta.full_name || meta.name || authUser.user.email?.split("@")[0] || "Christ Student";
+              emailFromAuth = authUser.user.email ?? null;
             }
           } catch (_) {}
 
           await supabaseServer.from("profiles").insert([{
             id: userId,
             full_name: nameFromAuth,
-            degree: "MSc Big Data Analytics",
-            target_role: "Software Engineer / Data Scientist",
+            degree: deriveDepartment(emailFromAuth),
             current_skills: []
           }]);
           const res = await supabaseServer.from("profiles").select("*").eq("id", userId).single();
@@ -88,7 +90,7 @@ export const getAnalyticsSummary = createServerFn({ method: "GET" })
         const db = getDb();
         let row = db.prepare("SELECT * FROM profiles WHERE id = ?").get(userId) as any;
         if (!row) {
-          db.prepare("INSERT INTO profiles (id, full_name, degree, target_role, current_skills) VALUES (?, 'Christ Student', 'MSc Big Data Analytics', 'Software Engineer / Data Scientist', '[]')").run(userId);
+          db.prepare("INSERT INTO profiles (id, full_name, degree, current_skills) VALUES (?, 'Christ Student', 'Student', '[]')").run(userId);
           row = db.prepare("SELECT * FROM profiles WHERE id = ?").get(userId);
         }
         return {
@@ -408,7 +410,7 @@ export const getAnalyticsSummary = createServerFn({ method: "GET" })
       return {
         profile: {
           fullName: profile?.full_name || "Student",
-          degree: profile?.degree || "MSc Big Data Analytics",
+          degree: profile?.degree || "Student",
           semester: (profile as any)?.semester || "Semester 4",
           targetRole: profile?.target_role || "Software Engineer",
           skills: userSkills,
@@ -433,10 +435,10 @@ export const getAnalyticsSummary = createServerFn({ method: "GET" })
       return {
         profile: {
           fullName: "Student",
-          degree: "MSc Big Data Analytics",
-          semester: "Semester 4",
-          targetRole: "Software Engineer",
-          skills: ["Python", "SQL", "Machine Learning"],
+          degree: "Student",
+          semester: "",
+          targetRole: "",
+          skills: [],
           examDates: new Date().toISOString(),
         },
         studentMetrics: null,
