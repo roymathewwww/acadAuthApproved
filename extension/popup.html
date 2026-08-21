@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AcadSphere Sync</title>
+  <style>
+    body {
+      width: 300px;
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0e12;
+      color: #f4f4f5;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 800;
+      margin: 0 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    p.sub {
+      font-size: 11px;
+      color: #a1a1aa;
+      margin: 0 0 14px;
+      line-height: 1.5;
+    }
+    label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      background: #1c1a20;
+      border: 1px solid #2c2a32;
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: #f4f4f5;
+      font-size: 12px;
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .primary { background: #C81E3A; color: #fff; }
+    .secondary { background: #2c2a32; color: #f4f4f5; }
+    #status {
+      font-size: 11px;
+      line-height: 1.5;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #1c1a20;
+      border: 1px solid #2c2a32;
+      display: none;
+    }
+    #status.show { display: block; }
+    a { color: #FF5468; }
+  </style>
+</head>
+<body>
+  <h1>🎓 AcadSphere Sync</h1>
+  <p class="sub">Pulls your live CUE attendance into AcadSphere.</p>
+
+  <label for="token">Sync token</label>
+  <input id="token" type="text" placeholder="Paste from AcadSphere → Attendance" autocomplete="off" />
+  <button id="save" class="secondary">Save Token</button>
+  <button id="sync" class="primary">Sync Now</button>
+
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

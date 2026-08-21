@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "AcadSphere Sync — CUE Attendance",
+  "version": "1.0.0",
+  "description": "Pulls your live, class-wise and day-wise attendance from the Christ University CUE portal straight into AcadSphere.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AcadSphere Sync"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://cue.christuniversity.in/*",
+    "https://jlyembaddiyakxuvaflq.supabase.co/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://cue.christuniversity.in/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
