@@ -43,26 +43,32 @@ CREATE POLICY "Users can view their own daily attendance"
 CREATE INDEX IF NOT EXISTS idx_student_attendance_daily_user_date
     ON public.student_attendance_daily (user_id, class_date DESC);
 
--- ── 3. Lock down student_attendance (course-wise summary) ──────────────────
--- Previous migration left this world-writable (USING (true) WITH CHECK (true))
--- and user_id as free-text, matched against nothing. Convert to a real UUID
--- FK and restrict reads to the owning user; all writes now go exclusively
+-- ── 3. student_attendance (course-wise summary) ─────────────────────────────
+-- Turns out this table doesn't currently exist on this project at all (an
+-- earlier migration file claimed to create it, but was never actually
+-- applied here — this project's migration history is untracked/ad-hoc).
+-- Create it fresh with the correct schema from the start: real UUID user_id,
+-- owner-only read policy, no public write policy — all writes go exclusively
 -- through the sync-attendance edge function using the service-role key,
 -- which bypasses RLS after validating the sync token server-side.
 
--- Existing rows are leftovers from the broken pipeline (world-writable table,
--- no verified ownership) — clear them rather than risk a cast failure on
--- garbage/test user_id values that aren't valid UUIDs. Real data repopulates
--- on the student's next extension sync.
-DELETE FROM public.student_attendance;
+CREATE TABLE IF NOT EXISTS public.student_attendance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    subject_code TEXT NOT NULL,
+    subject_name TEXT NOT NULL,
+    subject_type TEXT DEFAULT 'Theory',
+    attended_classes INTEGER DEFAULT 0,
+    total_classes INTEGER DEFAULT 0,
+    percentage DOUBLE PRECISION DEFAULT 100.0,
+    last_synced_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT student_attendance_user_subject_key UNIQUE (user_id, subject_code)
+);
 
-ALTER TABLE public.student_attendance
-    ALTER COLUMN user_id TYPE UUID USING user_id::uuid;
+ALTER TABLE public.student_attendance ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE public.student_attendance
-    ADD CONSTRAINT student_attendance_user_id_fkey
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-
+-- Defensive: drop any legacy world-writable policies if this table (or an
+-- older version of it) already existed under a different history.
 DROP POLICY IF EXISTS "Allow public read on student_attendance" ON public.student_attendance;
 DROP POLICY IF EXISTS "Allow public insert/update on student_attendance" ON public.student_attendance;
 DROP POLICY IF EXISTS "Users can view their own attendance" ON public.student_attendance;
@@ -72,3 +78,6 @@ CREATE POLICY "Users can view their own attendance"
     ON public.student_attendance FOR SELECT
     USING (auth.uid() = user_id);
 -- No public write policy — service role (edge function) only, via RLS bypass.
+
+CREATE INDEX IF NOT EXISTS idx_student_attendance_user_id
+    ON public.student_attendance (user_id);
