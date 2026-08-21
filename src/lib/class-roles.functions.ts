@@ -254,6 +254,26 @@ export const assignClassLeader = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ─── Server Function: remove the current Class Leader, no replacement ──────
+// (teacher only) — demotes back to a regular student. Distinct from
+// assignClassLeader: that one only ever *replaces* the CR with someone new,
+// this is the "just take the role away" action.
+export const removeClassLeader = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ ok: true }> => {
+    const caller = await requireRole(context.userId, ["teacher"]);
+    if (!supabaseServer) throw new Error("Database unavailable");
+    if (!caller.section) throw new Error("Your account has no section set.");
+
+    const { error } = await supabaseServer
+      .from("profiles")
+      .update({ role: "student", updated_at: new Date().toISOString() })
+      .eq("section", caller.section)
+      .eq("role", "class_leader");
+    if (error) throw new Error(`Removal failed: ${error.message}`);
+    return { ok: true };
+  });
+
 // ─── Server Function: upload/replace the section timetable (CR only) ───────
 const timetableRowSchema = z.object({
   dayOfWeek: z.string().min(1).max(20),

@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChatLayout } from "@/components/chat/ChatLayout";
-import { listMySectionStudents, assignClassLeader } from "@/lib/class-roles.functions";
+import { listMySectionStudents, assignClassLeader, removeClassLeader } from "@/lib/class-roles.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Loader2 } from "lucide-react";
+import { Crown, Loader2, UserMinus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/assign-cr")({
   component: AssignCrPage,
@@ -17,6 +17,7 @@ function AssignCrPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listMySectionStudents);
   const assignFn = useServerFn(assignClassLeader);
+  const removeFn = useServerFn(removeClassLeader);
 
   const { data: roster = [], isLoading } = useQuery({
     queryKey: ["sectionRoster"],
@@ -30,6 +31,15 @@ function AssignCrPage() {
       qc.invalidateQueries({ queryKey: ["sectionRoster"] });
     },
     onError: (err: any) => toast.error(err.message || "Failed to assign"),
+  });
+
+  const removeMut = useMutation({
+    mutationFn: () => removeFn(),
+    onSuccess: () => {
+      toast.success("Class Leader removed. They're back to a regular student.");
+      qc.invalidateQueries({ queryKey: ["sectionRoster"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to remove"),
   });
 
   const currentCr = roster.find((s) => s.role === "class_leader");
@@ -88,9 +98,21 @@ function AssignCrPage() {
                             </div>
                           </div>
                           {isCr ? (
-                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-brand-gold/15 text-brand-gold border border-brand-gold/30">
-                              <Crown className="h-3 w-3" /> Class Leader
-                            </span>
+                            <div className="shrink-0 flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-brand-gold/15 text-brand-gold border border-brand-gold/30">
+                                <Crown className="h-3 w-3" /> Class Leader
+                              </span>
+                              <Button
+                                size="icon-sm"
+                                variant="outline"
+                                disabled={removeMut.isPending}
+                                onClick={() => { if (confirm(`Remove ${s.full_name || s.email} as Class Leader?`)) removeMut.mutate(); }}
+                                title="Remove as Class Leader"
+                                className="text-muted-foreground hover:text-brand-red hover:border-brand-red/40"
+                              >
+                                {removeMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserMinus className="h-3 w-3" />}
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"

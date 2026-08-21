@@ -10,7 +10,7 @@ import { gsap } from "gsap";
 import {
   Plus, MessageSquare, Trash2, LogOut, Menu,
   LayoutDashboard, BookOpen, Calendar, FileText,
-  LineChart, CheckCircle2, Search, Bell, Sparkles,
+  LineChart, CheckCircle2, Bell, Sparkles,
   User, Settings, Code, Volume2, CalendarDays,
   Users, Sun, Moon, X, Activity, GraduationCap,
   UserCog, Shield, Radio, Megaphone, TrendingUp, ScrollText, Lock, FileOutput,
@@ -32,7 +32,6 @@ export function ChatLayout({
   const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const wordmarkRef = useRef<HTMLSpanElement>(null);
@@ -373,20 +372,6 @@ export function ChatLayout({
               <span className="font-medium text-foreground tracking-tight">
                 {isAdmin ? "Enterprise Command Center" : "AcadSphere Academic Space"}
               </span>
-            </div>
-          </div>
-
-          {/* Center Search */}
-          <div className="flex-1 max-w-sm mx-4 hidden sm:block">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={isAdmin ? "Search students or records..." : "Search modules, courses, subjects..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 text-xs font-sans rounded-xl border border-border bg-muted/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-brand-red/40 focus:border-brand-red/40 transition-all"
-              />
             </div>
           </div>
 
