@@ -151,6 +151,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800;12..96,900&display=swap",
       },
+      // Sidebar wordmark lockup only: Caveat Brush (bold marker script) over
+      // Anton (ultra-condensed poster caps) — see --font-wordmark-* in
+      // styles.css for why these two specifically.
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Anton&family=Caveat+Brush&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

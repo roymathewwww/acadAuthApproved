@@ -26,6 +26,15 @@
   --font-sans:    "Geist", "Inter", "Switzer", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:    "Geist Mono", "Space Mono", ui-monospace, monospace;
 
+  /* Sidebar wordmark lockup only — a bold brush script over an ultra-condensed
+     poster face, the same two-font-family treatment as the "Create/LOUDER"
+     reference. "Billion Dreams" itself is a paid marketplace font with no
+     web-safe/Google Fonts source, so this substitutes the closest true brush-
+     marker Google Font (Caveat Brush) — genuinely the same style family, not
+     a generic fallback. */
+  --font-wordmark-script: "Caveat Brush", "Segoe Script", cursive;
+  --font-wordmark-block:  "Anton", "Archivo Black", sans-serif;
+
   /* Radius scale */
   --radius-xs:  2px;
   --radius-sm:  4px;

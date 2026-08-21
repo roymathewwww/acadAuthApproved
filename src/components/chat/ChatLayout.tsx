@@ -218,7 +218,7 @@ export function ChatLayout({
 
       {/* ─── Sidebar (retractable — spring width animation) ───────────────── */}
       <motion.aside
-        animate={{ width: collapsed ? 76 : 248 }}
+        animate={{ width: collapsed ? 76 : 272 }}
         transition={{ type: "spring", stiffness: 350, damping: 30 }}
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col shrink-0",
@@ -227,25 +227,31 @@ export function ChatLayout({
           mobileOpen ? "translate-x-0 !w-64" : "-translate-x-full md:translate-x-0",
         )}
       >
-        {/* Wordmark header — no icon mark, just a bigger display-serif name
-            with a slow ambient two-tone glow behind it */}
-        <div className="relative flex h-16 items-center justify-between px-4 border-b border-border shrink-0 overflow-hidden">
+        {/* Wordmark header — a poster-style two-font lockup (brush script
+            over an ultra-condensed display face), stacked non-linearly with
+            "Acad" overlapping down into "SPHERE" — a lot taller than the old
+            single-line h-16 strip on purpose. */}
+        <div className="relative flex items-center justify-between px-4 py-5 border-b border-border shrink-0 overflow-hidden">
           <div
             ref={glowRef}
-            className="pointer-events-none absolute -left-8 -top-10 h-24 w-24 rounded-full bg-brand-red opacity-30 blur-3xl"
+            className="pointer-events-none absolute -left-8 -top-10 h-32 w-32 rounded-full bg-brand-red opacity-30 blur-3xl"
             aria-hidden
           />
           <Link to={isAdmin ? "/admin" : "/app"} className="relative flex items-center min-w-0 z-10">
             {!collapsed ? (
-              <span
-                ref={wordmarkRef}
-                className="font-brand text-2xl font-black tracking-tight text-foreground truncate"
-                style={{ fontOpticalSizing: "auto" }}
-              >
-                Acad<span className="text-brand-red">Sphere</span>
+              <span ref={wordmarkRef} className="flex flex-col leading-none select-none">
+                <span
+                  className="font-wordmark-script text-brand-gold text-[2.75rem] leading-none -rotate-6 origin-bottom-left pl-1"
+                  style={{ textShadow: "0 2px 14px color-mix(in srgb, var(--brand-gold) 35%, transparent)" }}
+                >
+                  Acad
+                </span>
+                <span className="font-wordmark-block text-brand-red text-[4rem] leading-[0.78] tracking-tight -mt-2.5">
+                  SPHERE
+                </span>
               </span>
             ) : (
-              <span className="font-brand text-xl font-black text-brand-red">A</span>
+              <span className="font-wordmark-block text-3xl text-brand-red">A</span>
             )}
           </Link>
 
