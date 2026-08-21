@@ -89,7 +89,7 @@ function AttendancePage() {
       duration: 1,
       ease: "power2.out",
       onUpdate: () => {
-        if (pctRef.current) pctRef.current.innerText = counter.val.toFixed(1);
+        if (pctRef.current) pctRef.current.innerText = counter.val.toFixed(2);
       },
     });
   }, [overall?.percentage]);

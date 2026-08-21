@@ -73,13 +73,13 @@ function scrapeCourseWise() {
   const seen = new Set();
 
   for (const anchor of anchors) {
-    const card = findAncestorContaining(
-      anchor.el,
-      (text) => PCT_CONTAINS_RE.test(text) && TYPE_RE.test(text),
-      8
-    );
+    // Card boundary only requires a nearby %. Requiring a Theory/Practical/
+    // Lab keyword too used to be how the card was found, but rows like
+    // "Extracurricular" / "Co-curricular" have no such type line at all —
+    // that requirement silently dropped the whole card, hours and all.
+    const card = findAncestorContaining(anchor.el, (text) => PCT_CONTAINS_RE.test(text), 8);
     if (!card) {
-      LOG("  ↳ skipped anchor (no card ancestor with % + Theory/Practical found):", anchor.text);
+      LOG("  ↳ skipped anchor (no card ancestor with a % found):", anchor.text);
       continue;
     }
 
@@ -92,17 +92,15 @@ function scrapeCourseWise() {
 
     // Code + type line: shortest element containing the type keyword (the
     // shortest one is the badge itself, not some larger wrapper around it).
+    // Optional — rows like Extracurricular don't have one at all.
     const typeCandidates = elementsWithText(card)
       .filter((x) => TYPE_RE.test(x.text) && x.text.length <= 40)
       .sort((a, b) => a.text.length - b.text.length);
     const typeLine = typeCandidates[0];
-    if (!typeLine) {
-      LOG("  ↳ skipped anchor (no code/type line found in card):", anchor.text);
-      continue;
-    }
-
-    const type = typeLine.text.match(TYPE_RE)[1];
-    const code = typeLine.text.split(TYPE_RE)[0].replace(/[•·|]/g, " ").trim() || "N/A";
+    const type = typeLine ? typeLine.text.match(TYPE_RE)[1] : "Other";
+    const codeFromTypeLine = typeLine
+      ? typeLine.text.split(TYPE_RE)[0].replace(/[•·|]/g, " ").trim()
+      : "";
 
     // Course name: first true DOM leaf in the card, in document order, that
     // isn't the hours line, % badge, or code/type line, and looks like a
@@ -111,12 +109,14 @@ function scrapeCourseWise() {
       (x) =>
         x.text !== anchor.text &&
         (!pctEl || x.el !== pctEl.el) &&
-        x.text !== typeLine.text &&
+        (!typeLine || x.text !== typeLine.text) &&
         x.text.length >= 3 &&
         !/^\d+$/.test(x.text) &&
-        !PCT_RE.test(x.text)
+        !PCT_RE.test(x.text) &&
+        !/^with\s/i.test(x.text) // skip badges like "With Co-curricular"
     );
-    const name = nameLeaf ? nameLeaf.text : code;
+    const name = nameLeaf ? nameLeaf.text : (codeFromTypeLine || "Untitled");
+    const code = codeFromTypeLine || name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 30) || "N/A";
 
     const key = `${code}-${type}`.toLowerCase();
     if (seen.has(key)) continue;
