@@ -117,12 +117,12 @@ export function FluidFlowGrid({ isDark, isSuccess = false, className = "" }: Flu
             angle = angle * (1 - force) + pushAngle * force;
           }
 
-          const lineLen = isNear ? 16 : 9;
+          const lineLen = isNear ? 20 : 12;
           const x2 = x + Math.cos(angle) * lineLen;
           const y2 = y + Math.sin(angle) * lineLen;
 
-          const baseAlpha = 0.05 + Math.sin(x * 0.01 + y * 0.01 + time) * 0.025;
-          const alpha = Math.min(0.9, isNear ? 0.22 + flash * 0.3 : baseAlpha + flash * 0.15);
+          const baseAlpha = 0.16 + Math.sin(x * 0.01 + y * 0.01 + time) * 0.07;
+          const alpha = Math.min(0.9, isNear ? 0.45 + flash * 0.3 : baseAlpha + flash * 0.15);
           const rgb = isNear ? accentRgb : flash > 0.05 ? goldRgb : baseRgb;
 
           ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;

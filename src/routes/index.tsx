@@ -147,15 +147,22 @@ function Landing() {
 
       {/* ─── Floating Pill Navigation ───────────────────────── */}
       <div className="sticky top-0 z-50 flex justify-center pt-4 px-6">
-        <header
+        <motion.header
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="w-full max-w-5xl flex items-center justify-between px-5 h-12 nav-pill transition-editorial"
           style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
         >
           {/* Wordmark */}
           <Link to="/" className="flex items-center">
-            <span className="font-brand font-black text-base tracking-tight text-foreground">
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="font-brand font-black text-base tracking-tight text-foreground"
+            >
               Acad<span className="text-brand-red">Sphere</span>
-            </span>
+            </motion.span>
           </Link>
 
           {/* Center nav */}
@@ -163,26 +170,35 @@ function Landing() {
             {["#features", "#stats", "#testimonials", "#login"].map((href, i) => {
               const labels = ["Modules", "Impact", "Testimonials", "Sign In"];
               return (
-                <a
+                <motion.a
                   key={href}
                   href={href}
-                  className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground transition-colors duration-[120ms] px-3 py-1.5"
+                  whileHover="hover"
+                  initial="rest"
+                  className="relative font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground transition-colors duration-[120ms] px-3 py-1.5"
                 >
                   {labels[i]}
-                </a>
+                  <motion.span
+                    variants={{ rest: { scaleX: 0, opacity: 0 }, hover: { scaleX: 1, opacity: 1 } }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute left-3 right-3 -bottom-0.5 h-[1.5px] bg-brand-red origin-left"
+                  />
+                </motion.a>
               );
             })}
           </nav>
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.12, rotate: -12 }}
+              whileTap={{ scale: 0.9 }}
               onClick={toggleTheme}
               className="p-1.5 rounded-full text-muted-foreground hover:text-foreground transition-colors duration-[120ms]"
               title={isDark ? "Light mode" : "Dark mode"}
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+            </motion.button>
             <Button asChild variant="ghost" size="sm">
               <Link to="/auth">Sign In</Link>
             </Button>
@@ -190,7 +206,7 @@ function Landing() {
               <Link to="/auth">Get Started</Link>
             </Button>
           </div>
-        </header>
+        </motion.header>
       </div>
 
       {/* ─── Hero Section ───────────────────────────────────── */}
