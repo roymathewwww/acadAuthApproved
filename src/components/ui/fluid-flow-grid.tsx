@@ -55,8 +55,14 @@ export function FluidFlowGrid({ isDark, isSuccess = false, className = "" }: Flu
 
     const handleResize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = canvas.parentElement?.clientWidth || window.innerWidth;
-      height = canvas.parentElement?.clientHeight || window.innerHeight;
+      // This canvas is `position: fixed`, so it only ever shows a
+      // viewport-sized window regardless of page length -- size the pixel
+      // buffer to the viewport, NOT canvas.parentElement.clientHeight (the
+      // wrapper's full in-flow content height, e.g. 3800px+ on a long page).
+      // Sizing to the parent was allocating/redrawing 4x more canvas than
+      // ever gets shown, for nothing.
+      width = window.innerWidth;
+      height = window.innerHeight;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
@@ -96,7 +102,7 @@ export function FluidFlowGrid({ isDark, isSuccess = false, className = "" }: Flu
       const spacing = 42;
       const cols = Math.ceil(width / spacing) + 1;
       const rows = Math.ceil(height / spacing) + 1;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.4;
 
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
@@ -117,12 +123,18 @@ export function FluidFlowGrid({ isDark, isSuccess = false, className = "" }: Flu
             angle = angle * (1 - force) + pushAngle * force;
           }
 
-          const lineLen = isNear ? 20 : 12;
+          const lineLen = isNear ? 26 : 17;
           const x2 = x + Math.cos(angle) * lineLen;
           const y2 = y + Math.sin(angle) * lineLen;
 
-          const baseAlpha = 0.16 + Math.sin(x * 0.01 + y * 0.01 + time) * 0.07;
-          const alpha = Math.min(0.9, isNear ? 0.45 + flash * 0.3 : baseAlpha + flash * 0.15);
+          // Composited against a near-white page background, low alpha here
+          // reads as literally invisible, not "subtle" -- confirmed via a
+          // headless-browser pixel probe (max observed alpha ~0.17 produced
+          // a <30/255 RGB delta from #FAFAF8, imperceptible at a glance).
+          // These values are deliberately much higher so the texture actually
+          // registers as ambient motion instead of doing nothing.
+          const baseAlpha = 0.22 + Math.sin(x * 0.01 + y * 0.01 + time) * 0.08;
+          const alpha = Math.min(0.85, isNear ? 0.55 + flash * 0.25 : baseAlpha + flash * 0.2);
           const rgb = isNear ? accentRgb : flash > 0.05 ? goldRgb : baseRgb;
 
           ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
@@ -149,7 +161,15 @@ export function FluidFlowGrid({ isDark, isSuccess = false, className = "" }: Flu
   return (
     <canvas
       ref={canvasRef}
-      className={`fixed inset-0 pointer-events-none -z-10 w-full h-full ${className}`}
+      // Deliberately NOT z-index:-10. `position:fixed` always creates its
+      // own stacking context regardless of z-index (per spec), so a
+      // negative value here doesn't just sit "behind normal content" the
+      // way it would on a plain relative/absolute box -- verified via a
+      // headless pixel probe that it was never compositing into the page
+      // AT ALL, at any alpha. z-index:0 (the default) + being the first
+      // child in the DOM is enough: later siblings (nav, hero, sections)
+      // still paint above it in normal tree order.
+      className={`fixed inset-0 pointer-events-none w-full h-full ${className}`}
       style={{ display: "block" }}
     />
   );
