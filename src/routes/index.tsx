@@ -141,8 +141,15 @@ function Landing() {
   };
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="relative min-h-screen text-foreground overflow-hidden">
       {/* ─── Fluid Flow Grid Canvas Background ─────────────────── */}
+      {/* NOTE: this wrapper must stay WITHOUT its own bg-background class.
+          It's `position:relative` (z-index:auto), so per CSS stacking rules
+          it still gets promoted to its own paint layer above the canvas's
+          negative z-index — an opaque bg here would fully occlude the fixed
+          canvas everywhere on the page, which is exactly what was happening.
+          html/body already paint --color-background globally (styles.css),
+          so the canvas still has a solid backdrop underneath it. */}
       <FluidFlowGrid isDark={isDark} isSuccess={isAuthSuccess} />
 
       {/* ─── Floating Pill Navigation ───────────────────────── */}
