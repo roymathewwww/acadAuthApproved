@@ -177,14 +177,14 @@ export const analyzeResume = createServerFn({ method: "POST" })
 
       const prompt = `
       You are an expert resume optimizer and professional recruiter.
-      Analyze the user's resume text and job description provided below. 
+      Analyze the user's resume text and job description provided below.
       Calculate their alignment metrics, detect skill gaps, and provide actionable bullet point rewrites.
 
       Resume Content:
-      ${resumeText}
+      ${clampInputText(resumeText, "Resume text")}
 
       Job Description:
-      ${data.jobDescription}
+      ${clampInputText(data.jobDescription, "Job description")}
 
       Provide your response as a valid JSON object. Do not include markdown code block formatting (like \`\`\`json) or any prefix/suffix outside the JSON.
       The response must strictly follow this JSON structure:
@@ -208,6 +208,7 @@ export const analyzeResume = createServerFn({ method: "POST" })
       const response = await generateText({
         model,
         prompt,
+        maxOutputTokens: 1200,
       });
 
       let text = response.text.trim();
@@ -235,6 +236,24 @@ export const analyzeResume = createServerFn({ method: "POST" })
 // import.meta.env.VITE_GEMINI_API_KEY, which both leaked the key to anyone
 // opening devtools AND silently broke in production because Vite only bakes
 // VITE_* vars in at build time, not from Render's runtime env).
+// Groq's free/on-demand tier caps openai/gpt-oss-120b at 8,000 tokens per
+// minute — and that ceiling covers the PROMPT plus whatever completion
+// budget is requested, not just the prompt. Leaving maxOutputTokens unset
+// let the SDK/Groq reserve a large default completion allowance, so even a
+// modest resume + job description (a couple thousand prompt tokens) could
+// push the total "requested" tokens past 8,000 and get rejected outright —
+// which is exactly what "Request too large ... TPM: Limit 8000, Requested
+// 8941" means. Capping maxOutputTokens here, plus a generous safety
+// truncation on the two free-text inputs, keeps every real request under
+// that ceiling instead of only working for suspiciously short resumes/JDs.
+const MAX_TAILOR_OUTPUT_TOKENS = 2200;
+const MAX_INPUT_CHARS = 6000; // ~1,500 tokens — far more than a 1-page resume or a real JD needs
+
+function clampInputText(text: string, label: string): string {
+  if (text.length <= MAX_INPUT_CHARS) return text;
+  return `${text.slice(0, MAX_INPUT_CHARS)}\n[${label} truncated for length — tailor from what's above.]`;
+}
+
 export const tailorResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => TailorInputSchema.parse(input))
@@ -243,6 +262,9 @@ export const tailorResume = createServerFn({ method: "POST" })
     if (!model) {
       throw new Error("No AI provider is configured on the server. Set GROQ_API_KEY (or OPENAI_API_KEY / GEMINI_API_KEY) in the environment.");
     }
+
+    const resumeText = clampInputText(data.resumeText, "Resume text");
+    const jobDescription = clampInputText(data.jobDescription, "Job description");
 
     const prompt = `You are an elite Executive Resume Strategist and ATS Specialist. You do real,
 job-description-driven tailoring — not generic rephrasing. Follow this process before writing
@@ -285,10 +307,10 @@ CRITICAL RULES:
 6. PRESERVE HYPERLINKS EXACTLY: if the resume text below contains a line starting with "[Detected hyperlinks in original document:", it lists the real URLs that were hyperlinked in the source PDF/DOCX (portfolio site, LinkedIn, GitHub, etc. — these are often only shown as plain labels like "LinkedIn" in the visible text, with the real URL only present in that detected-hyperlinks line). Copy those exact URLs into the "links" field, do not paraphrase or drop them, and do not include that bracketed marker line itself anywhere in your output.
 
 RESUME TEXT:
-${data.resumeText}
+${resumeText}
 
 JOB DESCRIPTION:
-${data.jobDescription}
+${jobDescription}
 
 RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA (no markdown fences, no prose outside the JSON):
 {
@@ -313,7 +335,17 @@ RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA (no markdown fences, no p
   "certifications": ["", ""]
 }`;
 
-    const response = await generateText({ model, prompt });
+    let response: Awaited<ReturnType<typeof generateText>>;
+    try {
+      response = await generateText({ model, prompt, maxOutputTokens: MAX_TAILOR_OUTPUT_TOKENS });
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      console.error("[tailorResume] AI provider call failed:", msg);
+      if (/too large|tokens per minute|rate.?limit|429/i.test(msg)) {
+        throw new Error("Your resume and job description are too long for the AI to process right now. Try pasting a shorter job description (just the requirements/responsibilities) and try again.");
+      }
+      throw new Error(`AI tailoring failed: ${msg}`);
+    }
 
     let text = response.text.trim();
     if (text.startsWith("```")) {
