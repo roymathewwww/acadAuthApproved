@@ -169,44 +169,46 @@ function ProfilePage() {
 
         {/* Header */}
         <div className="relative overflow-hidden px-6 md:px-8 py-8 border-b border-border bg-card">
-          <div className="relative flex items-start gap-5">
-            <div className="relative shrink-0">
-              <Avatar className="h-16 w-16 rounded-2xl shadow-sm border border-border">
-                <AvatarImage src={storedAvatar || ""} alt={displayName} />
-                <AvatarFallback className="bg-brand-red text-brand-red-foreground font-black text-xl">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-600 border-2 border-card flex items-center justify-center">
-                <Check className="h-3 w-3 text-white" />
-              </div>
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-display font-black tracking-tight text-foreground">{displayName}</h1>
-              </div>
-
-              {displayEmail && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                  <Mail className="h-3.5 w-3.5" />
-                  <span className="font-mono text-xs text-foreground font-semibold">{displayEmail}</span>
+          <div className="relative flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+            <div className="flex items-start gap-4 sm:gap-5 min-w-0">
+              <div className="relative shrink-0">
+                <Avatar className="h-16 w-16 rounded-2xl shadow-sm border border-border">
+                  <AvatarImage src={storedAvatar || ""} alt={displayName} />
+                  <AvatarFallback className="bg-brand-red text-brand-red-foreground font-black text-xl">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-600 border-2 border-card flex items-center justify-center">
+                  <Check className="h-3 w-3 text-white" />
                 </div>
-              )}
+              </div>
 
-              {displayRole && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {displayDegree} · {displayRole}
-                </p>
-              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-display font-black tracking-tight text-foreground break-words">{displayName}</h1>
+                </div>
 
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Christ University (Bangalore)
-                </span>
-                <span className="text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
-                  {displayDegree}{profile?.semester ? ` · ${profile.semester}` : ""}
-                </span>
+                {displayEmail && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 min-w-0">
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-mono text-xs text-foreground font-semibold break-all">{displayEmail}</span>
+                  </div>
+                )}
+
+                {displayRole && (
+                  <p className="text-xs text-muted-foreground mt-1 break-words">
+                    {displayDegree} · {displayRole}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Christ University (Bangalore)
+                  </span>
+                  <span className="text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
+                    {displayDegree}{profile?.semester ? ` · ${profile.semester}` : ""}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -279,7 +281,7 @@ function ProfilePage() {
                   ].map((item) => (
                     <div key={item.label} className="border-b border-border/60 pb-2 last:border-0 last:pb-0">
                       <p className="text-[9.5px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</p>
-                      <p className="font-semibold text-foreground mt-0.5">{item.value}</p>
+                      <p className="font-semibold text-foreground mt-0.5 break-words">{item.value}</p>
                     </div>
                   ))}
                 </CardContent>

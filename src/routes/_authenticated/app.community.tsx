@@ -850,7 +850,7 @@ function CommunityPage() {
           </div>
 
           {/* Central Segmented Control: DMs vs Discussions */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center flex-wrap gap-2 self-start sm:self-auto">
             <div className="flex items-center p-1 bg-muted/60 rounded-xl border border-border/80 shadow-xs">
               <button
                 onClick={() => setMainTab("dms")}
@@ -1047,13 +1047,13 @@ function CommunityPage() {
                       {/* Mobile Back Button */}
                       <button
                         onClick={() => setActivePeerId(null)}
-                        className="md:hidden h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        className="md:hidden h-9 w-9 shrink-0 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                         title="Back to conversation list"
                       >
                         <ArrowLeft className="h-4 w-4" />
                       </button>
 
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-xs font-bold ${avatarColor(activePeer.initials)}`}>
                           {activePeer.initials}
                         </div>
@@ -1062,11 +1062,11 @@ function CommunityPage() {
                         )}
                       </div>
 
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
                           <h2 className="text-xs font-semibold text-foreground leading-none">{activePeer.name}</h2>
                           <span className="text-[10px] font-mono text-muted-foreground">·</span>
-                          <span className="text-[10px] text-muted-foreground truncate">{activePeer.department}</span>
+                          <span className="text-[10px] text-muted-foreground truncate min-w-0">{activePeer.department}</span>
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
                           <Lock className="h-2.5 w-2.5 text-muted-foreground/70" />
@@ -1204,7 +1204,7 @@ function CommunityPage() {
                         required
                       />
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <span className="px-2 py-0.5 rounded-md bg-muted border border-border/50 font-mono">#general</span>
                         <span>Public to course students</span>
@@ -1267,13 +1267,13 @@ function CommunityPage() {
                       }`}
                     >
                       <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${isFaculty ? "bg-brand-red text-brand-red-foreground" : avatarColor(post.author_initials)}`}>
                               {post.author_initials}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-xs font-semibold text-foreground">{post.author_name}</p>
                                 {isFaculty && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider bg-brand-red/15 text-brand-red px-1.5 py-0.5 rounded-full border border-brand-red/25">
@@ -1296,7 +1296,7 @@ function CommunityPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-muted border border-border/50 text-muted-foreground">
                               #general
                             </span>
@@ -1312,7 +1312,7 @@ function CommunityPage() {
                           </div>
                         </div>
 
-                        <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                        <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">{post.content}</p>
 
                         <div className="flex items-center justify-between pt-2 border-t border-border/40">
                           <button

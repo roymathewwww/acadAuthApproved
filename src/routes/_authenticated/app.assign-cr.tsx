@@ -51,22 +51,22 @@ function AssignCrPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="px-6 py-5 border-b border-border"
+          className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border"
         >
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl border border-border bg-card flex items-center justify-center">
+            <div className="h-10 w-10 shrink-0 rounded-2xl border border-border bg-card flex items-center justify-center">
               <Crown className="h-5 w-5 text-brand-gold" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-base font-display font-black tracking-tight text-foreground">Assign Class Leader</h1>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                 {currentCr ? `Currently: ${currentCr.full_name || currentCr.email}` : "No Class Leader assigned yet"}
               </p>
             </div>
           </div>
         </motion.div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
@@ -103,7 +103,7 @@ function AssignCrPage() {
                                 <Crown className="h-3 w-3" /> Class Leader
                               </span>
                               <Button
-                                size="icon-sm"
+                                size="icon"
                                 variant="outline"
                                 disabled={removeMut.isPending}
                                 onClick={() => { if (confirm(`Remove ${s.full_name || s.email} as Class Leader?`)) removeMut.mutate(); }}

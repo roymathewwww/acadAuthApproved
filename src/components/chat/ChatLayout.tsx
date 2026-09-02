@@ -222,12 +222,12 @@ export function ChatLayout({
             {!collapsed ? (
               <span ref={wordmarkRef} className="flex flex-col leading-none select-none">
                 <span
-                  className="font-wordmark-script text-brand-gold text-[2.75rem] leading-none -rotate-6 origin-bottom-left pl-1"
+                  className="font-wordmark-script text-brand-gold text-[2.25rem] md:text-[2.75rem] leading-none -rotate-6 origin-bottom-left pl-1"
                   style={{ textShadow: "0 2px 14px color-mix(in srgb, var(--brand-gold) 35%, transparent)" }}
                 >
                   Acad
                 </span>
-                <span className="font-wordmark-block text-brand-red text-[4rem] leading-[0.78] tracking-tight -mt-2.5">
+                <span className="font-wordmark-block text-brand-red text-[3.25rem] md:text-[4rem] leading-[0.78] tracking-tight -mt-2.5">
                   SPHERE
                 </span>
               </span>
@@ -238,7 +238,7 @@ export function ChatLayout({
 
           <button
             onClick={() => setMobileOpen(false)}
-            className="relative z-10 rounded-lg p-1.5 text-muted-foreground hover:text-foreground transition-colors md:hidden"
+            className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors md:hidden"
           >
             <X className="h-4 w-4" />
           </button>
@@ -300,7 +300,7 @@ export function ChatLayout({
             <motion.button
               whileTap={{ scale: 0.94 }}
               onClick={toggleTheme}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl transition-colors"
+              className="flex h-9 w-9 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl transition-colors md:h-auto md:w-auto md:p-2"
               title={isDark ? "Light mode" : "Dark mode"}
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -341,7 +341,7 @@ export function ChatLayout({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
-              className="rounded-xl p-2 text-muted-foreground hover:bg-accent transition-colors md:hidden"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent transition-colors md:hidden"
             >
               <Menu className="h-4 w-4" />
             </button>
@@ -364,9 +364,9 @@ export function ChatLayout({
               <motion.button
                 whileTap={{ scale: 0.94 }}
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center p-0.5 rounded-full ring-2 ring-brand-gold/50 hover:ring-brand-gold transition-all"
+                className="flex items-center p-1 md:p-0.5 rounded-full ring-2 ring-brand-gold/50 hover:ring-brand-gold transition-all"
               >
-                <Avatar className="h-7 w-7">
+                <Avatar className="h-8 w-8 md:h-7 md:w-7">
                   <AvatarImage src={userAvatar} alt={userName} />
                   <AvatarFallback className="bg-brand-gold text-brand-gold-foreground font-semibold text-[10px]">
                     {userInitials}

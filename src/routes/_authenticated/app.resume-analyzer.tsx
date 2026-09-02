@@ -130,7 +130,7 @@ function ResumeAnalyzerPage() {
 
   return (
     <ChatLayout activeThreadId={null}>
-      <div className="h-full overflow-y-auto bg-background px-6 py-6 text-foreground md:px-10">
+      <div className="h-full overflow-y-auto bg-background px-4 py-6 text-foreground sm:px-6 md:px-10">
         
         {/* Banner */}
         <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 text-center shadow-lg md:p-8">
@@ -144,7 +144,7 @@ function ResumeAnalyzerPage() {
         </div>
 
         {/* Layout Grid */}
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
           
           {/* Inputs Section */}
           <div className="space-y-6">
@@ -299,7 +299,7 @@ function ResumeAnalyzerPage() {
             </h2>
 
             {!result ? (
-              <Card className="flex flex-1 flex-col items-center justify-center border-dashed border-border bg-card/20 p-8 text-center text-muted-foreground">
+              <Card className="flex flex-1 flex-col items-center justify-center border-dashed border-border bg-card/20 p-6 text-center text-muted-foreground sm:p-8">
                 <FileCheck2 className="mb-4 h-12 w-12 text-muted-foreground/30 animate-pulse" />
                 <p className="max-w-xs text-sm">
                   Upload a resume, paste a job description, and run analysis to view your compatibility rating and optimization guide.
@@ -333,7 +333,7 @@ function ResumeAnalyzerPage() {
 
                 {/* Breakdown Tabs */}
                 <Tabs defaultValue="skills" className="w-full bg-card/20 border border-border rounded-xl overflow-hidden p-4">
-                  <TabsList className="grid grid-cols-3 bg-surface border border-border/60">
+                  <TabsList className="grid grid-cols-1 sm:grid-cols-3 bg-surface border border-border/60">
                     <TabsTrigger value="skills" className="text-xs">Skills Match</TabsTrigger>
                     <TabsTrigger value="gaps" className="text-xs">Gaps & Fixes</TabsTrigger>
                     <TabsTrigger value="rewrites" className="text-xs">Bullet Rewrites</TabsTrigger>

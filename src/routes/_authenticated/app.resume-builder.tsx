@@ -346,7 +346,7 @@ function ResumeTailorerPage() {
               rewords your summary, skills, experience, and projects around what that job actually asks for —
               then hand off a clean, real-text ATS-friendly PDF via your browser's own print engine.
             </p>
-            <div className="mt-8 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-xs font-medium text-muted-foreground">
               {[
                 { n: 1, label: "Upload PDF / Word" },
                 { n: 2, label: "Paste JD" },
@@ -450,7 +450,7 @@ function ResumeTailorerPage() {
                         </div>
                         <button
                           onClick={clearFile}
-                          className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -604,16 +604,16 @@ function ResumeTailorerPage() {
                   {/* Success banner */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-green-500/20 bg-green-500/5 p-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/15">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500/15">
                         <CheckCircle2 className="h-5 w-5 text-green-400" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-green-400">
                           Resume Optimized for Zero-Overlap ATS!
                         </p>
                         <p className="text-[10px] text-muted-foreground">
                           File:{" "}
-                          <span className="font-mono text-foreground/70">
+                          <span className="font-mono text-foreground/70 break-words">
                             {tailoredResume.customFilename || "Roy_Mathew_Resume"}.pdf
                           </span>
                         </p>
@@ -853,13 +853,15 @@ function ResumeTailorerPage() {
                       >
                         {isDownloading ? (
                           <>
-                            <Spinner className="h-4 w-4" />
+                            <Spinner className="h-4 w-4 shrink-0" />
                             Generating PDF...
                           </>
                         ) : (
                           <>
-                            <Download className="h-4 w-4" />
-                            Download {tailoredResume.customFilename || "Resume"}.pdf
+                            <Download className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 truncate">
+                              Download {tailoredResume.customFilename || "Resume"}.pdf
+                            </span>
                           </>
                         )}
                       </Button>

@@ -185,17 +185,17 @@ function ExtraModulesPage() {
 
   return (
     <ChatLayout activeThreadId={null}>
-      <div className="h-full overflow-y-auto bg-[#0B0F19] text-slate-100 p-6 md:p-8 scrollbar-thin">
+      <div className="h-full overflow-y-auto bg-[#0B0F19] text-slate-100 p-4 sm:p-6 md:p-8 scrollbar-thin">
         
         {/* Navigation tabs */}
-        <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-800 pb-4 justify-between items-center">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4 sm:justify-between sm:items-center">
           <div>
             <h1 className="text-xl font-extrabold text-white flex items-center gap-1.5">
               <Sparkles className="h-5 w-5 text-indigo-400" /> Study Utilities Hub
             </h1>
           </div>
-          
-          <div className="flex bg-slate-900 border border-slate-800 rounded p-0.5">
+
+          <div className="flex flex-wrap gap-1 w-full sm:w-auto bg-slate-900 border border-slate-800 rounded p-0.5">
             <button 
               onClick={() => setActiveTab("pomodoro")}
               className={`px-3 py-1 rounded text-xs transition-colors flex items-center gap-1.5 ${
@@ -272,7 +272,7 @@ function ExtraModulesPage() {
         {/* ----------------- T2. PLACEMENT TRACKER ----------------- */}
         {activeTab === "placement" && (
           <div className="space-y-6 text-left">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center gap-2">
               <h2 className="text-sm font-bold text-slate-300 font-mono uppercase tracking-wider">// Applied Placement Track</h2>
               <Button onClick={() => setPlacementOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
                 <Plus className="h-3 w-3 mr-1" /> Add Application
@@ -285,15 +285,15 @@ function ExtraModulesPage() {
               ) : (
                 placements.map((p: any) => (
                   <Card key={p.id} className="bg-slate-900/40 border-slate-800 p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-slate-200 text-sm">{p.company}</h3>
-                        <p className="text-xs text-slate-400 mt-1">{p.role}</p>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-slate-200 text-sm truncate">{p.company}</h3>
+                        <p className="text-xs text-slate-400 mt-1 truncate">{p.role}</p>
                       </div>
                       <select
                         value={p.status}
                         onChange={(e) => updatePlaceMut.mutate({ id: p.id, status: e.target.value as any, notes: p.notes || "" })}
-                        className="bg-slate-950/80 border border-slate-800 text-[10px] h-6 px-1.5 rounded text-slate-300 font-semibold focus:outline-none"
+                        className="bg-slate-950/80 border border-slate-800 text-[10px] h-6 px-1.5 rounded text-slate-300 font-semibold focus:outline-none shrink-0"
                       >
                         <option value="applied">Applied</option>
                         <option value="interviewing">Interviewing</option>
@@ -315,7 +315,7 @@ function ExtraModulesPage() {
             {placementOpen && (
               <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm grid place-items-center p-4">
                 <Card className="bg-[#0F172A] border-slate-850 w-full max-w-sm shadow-2xl relative">
-                  <button onClick={() => setPlacementOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+                  <button onClick={() => setPlacementOpen(false)} className="absolute top-2 right-2 p-2 text-slate-400 hover:text-white transition-colors">
                     <X className="h-4.5 w-4.5" />
                   </button>
                   <CardHeader>
@@ -434,8 +434,8 @@ function ExtraModulesPage() {
                       {experience.map((exp, idx) => (
                         <div key={idx} className="p-3 border border-slate-850 rounded bg-slate-950/20 relative">
                           <button onClick={() => removeExperience(idx)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs">Remove</button>
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            <Input 
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                            <Input
                               placeholder="Company"
                               value={exp.company}
                               onChange={(e) => {
@@ -494,8 +494,8 @@ function ExtraModulesPage() {
                       {projects.map((proj, idx) => (
                         <div key={idx} className="p-3 border border-slate-850 rounded bg-slate-950/20 relative">
                           <button onClick={() => removeProject(idx)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs">Remove</button>
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            <Input 
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                            <Input
                               placeholder="Project Title"
                               value={proj.title}
                               onChange={(e) => {

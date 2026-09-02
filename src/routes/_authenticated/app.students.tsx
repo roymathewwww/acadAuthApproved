@@ -97,7 +97,7 @@ function TeacherDashboardPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="px-6 py-5 border-b border-border"
+          className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -127,7 +127,7 @@ function TeacherDashboardPage() {
           </div>
         </motion.div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
@@ -140,7 +140,7 @@ function TeacherDashboardPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full min-w-[700px] text-xs">
                     <thead className="bg-muted/50 border-b border-border text-muted-foreground font-mono uppercase tracking-wider">
                       <tr>
                         <th className="text-left py-3 px-4">Student</th>
@@ -198,7 +198,7 @@ function TeacherDashboardPage() {
                               <div className="flex justify-end gap-1">
                                 <button
                                   onClick={() => { setEditing(s); setEditForm({ fullName: s.full_name || "" }); }}
-                                  className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"
+                                  className="p-2 sm:p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"
                                   title="Edit"
                                 >
                                   <Edit3 className="h-3.5 w-3.5" />
@@ -206,7 +206,7 @@ function TeacherDashboardPage() {
                                 {!s.removed_at && (
                                   <button
                                     onClick={() => { if (confirm(`Remove ${s.full_name || s.email}? They'll be blocked from logging in.`)) removeMut.mutate(s.id); }}
-                                    className="p-1.5 rounded-lg hover:bg-brand-red/10 text-muted-foreground hover:text-brand-red"
+                                    className="p-2 sm:p-1.5 rounded-lg hover:bg-brand-red/10 text-muted-foreground hover:text-brand-red"
                                     title="Remove"
                                   >
                                     <UserX className="h-3.5 w-3.5" />
@@ -234,7 +234,7 @@ function TeacherDashboardPage() {
             >
               <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
                 <Card className="w-full max-w-sm relative">
-                  <button onClick={closeAddModal} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+                  <button onClick={closeAddModal} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-0 rounded-md text-muted-foreground hover:text-foreground">
                     <X className="h-4 w-4" />
                   </button>
                   <CardContent className="p-6 space-y-4">
@@ -291,7 +291,7 @@ function TeacherDashboardPage() {
             >
               <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
                 <Card className="w-full max-w-sm relative">
-                  <button onClick={() => setEditing(null)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+                  <button onClick={() => setEditing(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-0 rounded-md text-muted-foreground hover:text-foreground">
                     <X className="h-4 w-4" />
                   </button>
                   <CardContent className="p-6 space-y-4">

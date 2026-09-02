@@ -296,7 +296,7 @@ function ConversionsPage() {
       <div className="flex flex-col h-full overflow-y-auto bg-background text-foreground">
 
         {/* ── Page Header ─────────────────────────────────────────────── */}
-        <header className="border-b border-border/80 bg-card/60 backdrop-blur-md px-6 py-6 md:px-10 shrink-0">
+        <header className="border-b border-border/80 bg-card/60 backdrop-blur-md px-4 py-5 sm:px-6 sm:py-6 md:px-10 shrink-0">
           <div className="max-w-4xl flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl border border-border/80 bg-muted/60 flex items-center justify-center shrink-0 shadow-xs">
@@ -330,7 +330,7 @@ function ConversionsPage() {
             {/* Step 1: Format Selector */}
             <Card className="border-border/80 bg-card/70 shadow-xs rounded-2xl overflow-hidden">
               <CardHeader className="pb-3 border-b border-border/60">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-y-1">
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 rounded-lg border border-border bg-muted flex items-center justify-center text-foreground">
                       <span className="text-[10px] font-mono font-bold">1</span>
@@ -399,9 +399,9 @@ function ConversionsPage() {
                   })}
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-muted/30 border border-border/50 text-[11px] text-muted-foreground flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-muted/30 border border-border/50 text-[11px] text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <span>{selectedConversion.description}</span>
-                  <span className="font-mono text-[10px] text-foreground font-medium">
+                  <span className="font-mono text-[10px] text-foreground font-medium shrink-0">
                     {selectedConversion.inputExt.join(", ")} → .{selectedConversion.outputExt}
                   </span>
                 </div>
@@ -465,7 +465,7 @@ function ConversionsPage() {
                     </div>
                     <button
                       onClick={resetState}
-                      className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                       title="Remove file"
                     >
                       <X className="h-4 w-4" />
@@ -558,13 +558,15 @@ function ConversionsPage() {
                 >
                   {converting ? (
                     <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      {progressLabel}
+                      <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
+                      <span className="truncate">{progressLabel}</span>
                     </>
                   ) : (
                     <>
-                      <FileOutput className="h-4 w-4" />
-                      Convert {droppedFile ? `"${droppedFile.name}"` : "Document"}
+                      <FileOutput className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        Convert {droppedFile ? `"${droppedFile.name}"` : "Document"}
+                      </span>
                     </>
                   )}
                 </Button>
@@ -657,7 +659,7 @@ function ConversionsPage() {
                           size="sm"
                           onClick={() => downloadItem(item)}
                           disabled={downloadingId === item.id}
-                          className="h-7 w-7 p-0 rounded-lg border-border/70 hover:bg-muted shrink-0"
+                          className="h-9 w-9 p-0 rounded-lg border-border/70 hover:bg-muted shrink-0"
                         >
                           {downloadingId === item.id ? (
                             <RefreshCw className="h-3.5 w-3.5 animate-spin" />

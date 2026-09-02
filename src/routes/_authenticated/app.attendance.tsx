@@ -277,7 +277,7 @@ function AttendancePage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="px-6 py-5 border-b border-border shrink-0"
+          className="px-4 py-4 sm:px-6 sm:py-5 border-b border-border shrink-0"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ function AttendancePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 variant="outline"
@@ -327,7 +327,7 @@ function AttendancePage() {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="border-b border-border bg-card/60"
             >
-              <div className="p-6 max-w-2xl">
+              <div className="p-4 sm:p-6 max-w-2xl">
                 <div className="flex items-center gap-2 mb-3">
                   <KeyRound className="h-4 w-4 text-brand-red" />
                   <h2 className="text-sm font-bold text-foreground">Connect the AcadSphere Sync extension</h2>
@@ -388,7 +388,7 @@ function AttendancePage() {
         </AnimatePresence>
 
         {/* ── Body ── */}
-        <div className="p-6 space-y-6 flex-1">
+        <div className="p-4 sm:p-6 space-y-6 flex-1">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
@@ -625,7 +625,7 @@ function AttendancePage() {
                     </p>
 
                     {/* Scope switcher */}
-                    <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1 gap-1">
+                    <div className="inline-flex flex-wrap rounded-xl border border-border bg-muted/40 p-1 gap-1">
                       {([
                         { id: "session", label: "Pick Sessions" },
                         { id: "day", label: "Full Day" },

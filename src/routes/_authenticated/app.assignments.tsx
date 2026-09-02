@@ -125,7 +125,7 @@ function AssignmentsPage() {
 
   return (
     <ChatLayout activeThreadId={null}>
-      <div className="h-full overflow-y-auto bg-[#0B0F19] text-slate-100 p-6 md:p-8 scrollbar-thin font-sans">
+      <div className="h-full overflow-y-auto bg-[#0B0F19] text-slate-100 p-4 sm:p-6 md:p-8 scrollbar-thin font-sans">
         
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -138,7 +138,7 @@ function AssignmentsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isFaculty && (
               <>
                 <Button 
@@ -340,7 +340,7 @@ function AssignmentsPage() {
         {createOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm grid place-items-center p-4">
             <Card className="bg-[#0F172A] border-slate-850 w-full max-w-md shadow-2xl text-left relative">
-              <button onClick={() => setCreateOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <button onClick={() => setCreateOpen(false)} className="absolute top-2 right-2 h-9 w-9 flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="h-4.5 w-4.5" />
               </button>
               <CardHeader>
@@ -418,7 +418,7 @@ function AssignmentsPage() {
         {submitOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm grid place-items-center p-4">
             <Card className="bg-[#0F172A] border-slate-850 w-full max-w-sm shadow-2xl text-left relative">
-              <button onClick={() => setSubmitOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <button onClick={() => setSubmitOpen(false)} className="absolute top-2 right-2 h-9 w-9 flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="h-4.5 w-4.5" />
               </button>
               <CardHeader>
@@ -466,7 +466,7 @@ function AssignmentsPage() {
         {gradingOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm grid place-items-center p-4">
             <Card className="bg-[#0F172A] border-slate-850 w-full max-w-sm shadow-2xl text-left relative">
-              <button onClick={() => setGradingOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <button onClick={() => setGradingOpen(false)} className="absolute top-2 right-2 h-9 w-9 flex items-center justify-center text-slate-400 hover:text-white">
                 <X className="h-4.5 w-4.5" />
               </button>
               <CardHeader>

@@ -640,10 +640,10 @@ function AIAssistantPage() {
 
           {/* Chat header */}
           <div className="flex items-center justify-between h-14 px-3 md:px-5 border-b border-border shrink-0 bg-card/70 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.02)]">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
               {/* Mobile sidebar toggle */}
               <button
-                className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                className="md:hidden h-9 w-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setSidebarOpen(true)}
                 title="Open chat history"
               >
@@ -655,7 +655,7 @@ function AIAssistantPage() {
               >
                 <Sparkles className="h-4 w-4 text-brand-red-foreground" />
               </motion.div>
-              <span className="text-sm font-semibold text-foreground truncate">
+              <span className="text-sm font-semibold text-foreground truncate min-w-0">
                 {activeThreadId
                   ? (threads.find(t => t.id === activeThreadId)?.title ?? "AI Study Assistant")
                   : "AI Study Assistant"}
@@ -745,7 +745,7 @@ function AIAssistantPage() {
                     </div>
                     {streamingContent ? (
                       /* Live responding card using AiResponseWriter with auto-scroll and status header */
-                      <div className="max-w-[85%] w-full bg-card border border-border text-foreground rounded-2xl rounded-tl-sm p-4 shadow-md shadow-black/[0.03]">
+                      <div className="max-w-[85%] w-full min-w-0 break-words bg-card border border-border text-foreground rounded-2xl rounded-tl-sm p-4 shadow-md shadow-black/[0.03]">
                         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/60">
                           <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
@@ -794,7 +794,7 @@ function AIAssistantPage() {
                   whileHover={input.trim() || isStreaming ? { scale: 1.08 } : undefined}
                   whileTap={input.trim() || isStreaming ? { scale: 0.92 } : undefined}
                   onClick={() => isStreaming ? abortRef.current?.abort() : handleSend()}
-                  className={`shrink-0 mr-2 mb-2 h-8 w-8 rounded-xl flex items-center justify-center transition-colors duration-150 ${
+                  className={`shrink-0 mr-2 mb-2 h-9 w-9 md:h-8 md:w-8 rounded-xl flex items-center justify-center transition-colors duration-150 ${
                     isStreaming
                       ? "bg-brand-red/10 text-brand-red hover:bg-brand-red/20"
                       : input.trim()
@@ -844,7 +844,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
       </div>
 
       {/* Bubble */}
-      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-md shadow-black/[0.04] transition-colors ${
+      <div className={`max-w-[75%] min-w-0 break-words rounded-2xl px-4 py-3 text-sm shadow-md shadow-black/[0.04] transition-colors ${
         isUser
           ? "bg-primary text-primary-foreground rounded-tr-sm"
           : "bg-card border border-border hover:border-brand-red/25 text-foreground rounded-tl-sm"

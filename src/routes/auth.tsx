@@ -313,7 +313,7 @@ function AuthPage() {
       </div>
 
       {/* ─── Right Auth Form Panel ──────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
 
         {/* Mobile Branding Header */}
         <Link to="/" className="flex items-center mb-8 lg:hidden">

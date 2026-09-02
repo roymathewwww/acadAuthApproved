@@ -101,7 +101,7 @@ function CareerRoadmapPage() {
 
   return (
     <ChatLayout activeThreadId={null}>
-      <div className="h-full overflow-y-auto bg-background px-6 py-6 text-foreground md:px-10">
+      <div className="h-full overflow-y-auto bg-background px-4 py-4 text-foreground sm:px-6 sm:py-6 md:px-10">
         
         {/* Banner */}
         <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 text-center shadow-lg md:p-8">
@@ -115,7 +115,7 @@ function CareerRoadmapPage() {
         </div>
 
         {/* Form and Quick Dash */}
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-2">
           
           {/* Assessment Form */}
           <Card className="border-border bg-card/40 backdrop-blur-sm">
@@ -524,7 +524,7 @@ function CareerRoadmapPage() {
               </div>
               
               <div className="grid gap-6 md:grid-cols-2">
-                <Card className="bg-surface/30 border-border p-6 space-y-4">
+                <Card className="bg-surface/30 border-border p-4 sm:p-6 space-y-4">
                   <div>
                     <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
                       <Award className="h-4 w-4" /> Weekly Goal
@@ -551,7 +551,7 @@ function CareerRoadmapPage() {
                   </div>
                 </Card>
                 
-                <Card className="bg-surface/30 border-border p-6">
+                <Card className="bg-surface/30 border-border p-4 sm:p-6">
                   <h4 className="text-sm font-semibold text-primary flex items-center gap-2 mb-3">
                     💡 Motivation Checkpoints
                   </h4>
@@ -577,11 +577,11 @@ function CareerRoadmapPage() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Industry Trends */}
-                <Card className="bg-surface/30 border-border p-6 space-y-4">
+                <Card className="bg-surface/30 border-border p-4 sm:p-6 space-y-4">
                   <h4 className="text-sm font-semibold text-primary flex items-center gap-2 border-b border-border/40 pb-2">
                     <TrendingUp className="h-4 w-4" /> Industry Trends
                   </h4>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
                       <span className="text-muted-foreground block font-medium">Average Salary Package</span>
                       <span className="font-bold text-foreground mt-0.5 block">{result.role_details?.salary}</span>
@@ -608,7 +608,7 @@ function CareerRoadmapPage() {
                 </Card>
 
                 {/* Learning Resources */}
-                <Card className="bg-surface/30 border-border p-6">
+                <Card className="bg-surface/30 border-border p-4 sm:p-6">
                   <h4 className="text-sm font-semibold text-primary flex items-center gap-2 border-b border-border/40 pb-2 mb-4">
                     <BookOpen className="h-4 w-4" /> Premium Learning Resources
                   </h4>
@@ -616,7 +616,7 @@ function CareerRoadmapPage() {
                     {result.role_details?.resources && Object.entries(result.role_details.resources).map(([topic, links]: [string, any]) => (
                       <div key={topic} className="space-y-1.5 border-b border-border/20 pb-3 last:border-0 last:pb-0">
                         <span className="text-xs font-bold text-foreground">{topic}</span>
-                        <div className="grid grid-cols-3 gap-2 text-[10px]">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
                           <a href={links.youtube} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">📺 Video Playlist</a>
                           <a href={links.doc} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">📖 Official Docs</a>
                           <a href={links.platform} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">🛠️ Practice Platform</a>

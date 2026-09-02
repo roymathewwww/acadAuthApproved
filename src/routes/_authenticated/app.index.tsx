@@ -222,9 +222,9 @@ function AppIndex() {
                 </div>
                 <div className="space-y-1.5">
                   {atRiskSubjects.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between text-xs">
-                      <span className="text-foreground font-medium">{s.name}</span>
-                      <span className="font-mono font-bold text-brand-red">{s.percentage.toFixed(2)}%</span>
+                    <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-foreground font-medium truncate min-w-0">{s.name}</span>
+                      <span className="font-mono font-bold text-brand-red shrink-0">{s.percentage.toFixed(2)}%</span>
                     </div>
                   ))}
                 </div>

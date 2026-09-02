@@ -211,7 +211,7 @@ function PaperSimplifierPage() {
       <div className="h-full overflow-y-auto bg-slate-50 text-slate-800 light flex flex-col md:flex-row">
         
         {/* Main Workspace */}
-        <div className="flex-1 px-6 py-8 md:px-10">
+        <div className="flex-1 px-4 py-6 sm:px-6 sm:py-8 md:px-10">
           
           {/* Header */}
           <div className="border-b border-slate-200 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -246,7 +246,7 @@ function PaperSimplifierPage() {
             )}
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-3">
             
             {/* Left Col: Upload & Setup */}
             <div className="lg:col-span-1 space-y-6">
@@ -578,9 +578,9 @@ function PaperSimplifierPage() {
                         {selectedResult.vivaPrep && selectedResult.vivaPrep.map((item: any, i: number) => (
                           <AccordionItem key={i} value={`viva-${i}`} className="border border-slate-200 bg-slate-50/30 rounded-lg overflow-hidden px-3">
                             <AccordionTrigger className="text-xs font-semibold text-slate-700 hover:no-underline py-2.5 text-left flex justify-between gap-4">
-                              <span className="flex items-start gap-2 pr-6">
-                                <span className="font-mono text-blue-600">Q{i+1}.</span>
-                                <span>{item.question}</span>
+                              <span className="flex min-w-0 items-start gap-2 pr-6">
+                                <span className="font-mono text-blue-600 shrink-0">Q{i+1}.</span>
+                                <span className="break-words">{item.question}</span>
                               </span>
                               <Badge className={`${getDifficultyColor(item.difficulty)} border text-[9px] px-1.5 py-0 shrink-0 font-bold`}>
                                 {item.difficulty}
@@ -598,7 +598,7 @@ function PaperSimplifierPage() {
 
                   {/* Quick Revision Sheet */}
                   <Card className="bg-white border-slate-200/80 shadow-sm">
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between border-b border-slate-100">
+                    <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100">
                       <div>
                         <CardTitle className="font-display text-base font-bold text-blue-900">
                           9. Quick Revision Sheet
@@ -685,7 +685,7 @@ function PaperSimplifierPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => deleteMutation.mutate(item.id)}
-                        className="h-6 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
+                        className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

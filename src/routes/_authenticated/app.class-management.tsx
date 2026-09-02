@@ -136,7 +136,7 @@ function ClassManagementPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="px-6 py-5 border-b border-border"
+          className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border"
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 rounded-2xl border border-border bg-card flex items-center justify-center">
@@ -169,15 +169,15 @@ function ClassManagementPage() {
           </div>
         </motion.div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {tab === "timetable" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
                   Pick a subject for any cell, then Save — every student in your section sees this from their Attendance page.
                   First period counts as 2 hours for attendance (1 hour on Saturday); every other period counts as 1.
                 </p>
-                <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="gap-1 shrink-0">
+                <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="gap-1 shrink-0 self-start sm:self-auto">
                   {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
                 </Button>
               </div>
@@ -281,8 +281,8 @@ function ClassManagementPage() {
                   {roster.filter((s) => !s.removed_at).map((s) => (
                     <Card key={s.id}>
                       <CardContent className="p-3.5 flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold text-foreground">{s.full_name || s.email}</p>
-                        <div className="flex items-center gap-3 text-[10px] font-mono">
+                        <p className="text-xs font-semibold text-foreground truncate min-w-0">{s.full_name || s.email}</p>
+                        <div className="flex items-center gap-3 text-[10px] font-mono shrink-0">
                           <span className="text-emerald-600 dark:text-emerald-400">{s.classroomCompleted} done</span>
                           <span className="text-amber-600 dark:text-amber-400">{s.classroomPending} pending</span>
                           <span className="text-brand-red">{s.classroomOverdue} overdue</span>

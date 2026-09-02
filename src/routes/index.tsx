@@ -153,12 +153,12 @@ function Landing() {
       <FluidFlowGrid isDark={isDark} isSuccess={isAuthSuccess} />
 
       {/* ─── Floating Pill Navigation ───────────────────────── */}
-      <div className="sticky top-0 z-50 flex justify-center pt-4 px-6">
+      <div className="sticky top-0 z-50 flex justify-center pt-4 px-3 sm:px-6">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-full max-w-5xl flex items-center justify-between px-5 h-12 nav-pill transition-editorial"
+          className="w-full max-w-5xl flex items-center justify-between px-3 sm:px-5 h-12 nav-pill transition-editorial"
           style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
         >
           {/* Wordmark */}
@@ -166,7 +166,7 @@ function Landing() {
             <motion.span
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="font-brand font-black text-base tracking-tight text-foreground"
+              className="font-brand font-black text-sm sm:text-base tracking-tight text-foreground"
             >
               Acad<span className="text-brand-red">Sphere</span>
             </motion.span>
@@ -196,20 +196,20 @@ function Landing() {
           </nav>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <motion.button
               whileHover={{ scale: 1.12, rotate: -12 }}
               whileTap={{ scale: 0.9 }}
               onClick={toggleTheme}
-              className="p-1.5 rounded-full text-muted-foreground hover:text-foreground transition-colors duration-[120ms]"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors duration-[120ms] sm:h-auto sm:w-auto sm:p-1.5"
               title={isDark ? "Light mode" : "Dark mode"}
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </motion.button>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="px-3 sm:px-5">
               <Link to="/auth">Sign In</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="px-4 sm:px-5">
               <Link to="/auth">Get Started</Link>
             </Button>
           </div>
@@ -250,11 +250,11 @@ function Landing() {
             className="flex flex-col leading-none select-none mb-2"
           >
             <span
-              className="font-wordmark-script text-foreground text-[4.5rem] sm:text-[6rem] leading-none -rotate-6 self-center -mb-4 sm:-mb-6"
+              className="font-wordmark-script text-foreground text-[2.75rem] sm:text-[6rem] leading-none -rotate-6 self-center -mb-2 sm:-mb-6"
             >
               Acad
             </span>
-            <span className="font-wordmark-block text-brand-red text-[6rem] sm:text-[9rem] leading-[0.75] tracking-tight">
+            <span className="font-wordmark-block text-brand-red text-[4rem] sm:text-[9rem] leading-[0.75] tracking-tight">
               SPHERE
             </span>
           </motion.div>
@@ -430,7 +430,7 @@ function Landing() {
 
       {/* ─── Login Section ───────────────────────────────────── */}
       <section id="login" className="py-24 border-t border-border bg-card">
-        <div className="mx-auto max-w-5xl px-6 grid lg:grid-cols-2 gap-16 items-center">
+        <div className="mx-auto max-w-5xl px-6 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
 
           {/* Left: copy */}
           <div>
@@ -520,7 +520,7 @@ function Landing() {
 
       {/* ─── CTA Section ────────────────────────────────────── */}
       <section className="py-32 border-t border-border">
-        <div className="mx-auto max-w-5xl px-6 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="mx-auto max-w-5xl px-6 grid lg:grid-cols-2 gap-6 lg:gap-12 items-center">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground mb-4">
               Get Started
@@ -551,7 +551,7 @@ function Landing() {
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <footer className="border-t border-border py-12">
-        <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-start justify-between gap-8">
+        <div className="mx-auto max-w-5xl px-6 flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-8">
 
           {/* Left: brand */}
           <div>
@@ -566,7 +566,7 @@ function Landing() {
           </div>
 
           {/* Right: links */}
-          <nav className="flex items-center gap-6">
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {[
               { href: "#features", label: "Modules" },
               { href: "#testimonials", label: "Testimonials" },

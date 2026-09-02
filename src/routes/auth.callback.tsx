@@ -171,15 +171,15 @@ function AuthCallbackPage() {
 
   if (errorLog) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-[#FAFAF8] text-[#0A0A0A] font-sans">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 bg-[#FAFAF8] text-[#0A0A0A] font-sans">
         <h2 className="text-red-600 font-bold text-xl mb-4">Authentication Failed</h2>
-        <div className="p-4 bg-red-950 text-red-300 font-mono text-sm rounded-xl max-w-lg text-center shadow whitespace-pre-wrap border border-red-800">
+        <div className="p-4 bg-red-950 text-red-300 font-mono text-sm rounded-xl w-full max-w-lg text-center shadow whitespace-pre-wrap break-words border border-red-800">
           {errorLog}
         </div>
-        <div className="mt-8 flex gap-3">
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
           <button
             onClick={() => navigate({ to: "/auth", replace: true })}
-            className="px-5 py-2.5 bg-[#0A0A0A] text-white hover:bg-[#222222] rounded-xl transition-all text-xs font-bold shadow"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#0A0A0A] text-white hover:bg-[#222222] rounded-xl transition-all text-xs font-bold shadow"
           >
             Back to Sign In
           </button>
@@ -191,7 +191,7 @@ function AuthCallbackPage() {
               localStorage.setItem("demo_user_role", "student");
               navigate({ to: "/app", replace: true });
             }}
-            className="px-5 py-2.5 bg-[#EAE7DC] text-[#0A0A0A] hover:bg-[#DDD9C9] rounded-xl transition-all text-xs font-bold border border-[#E0DDD4]"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#EAE7DC] text-[#0A0A0A] hover:bg-[#DDD9C9] rounded-xl transition-all text-xs font-bold border border-[#E0DDD4]"
           >
             Continue as Guest / Demo
           </button>
