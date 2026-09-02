@@ -68,40 +68,40 @@ function ClassManagementPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [sectionSubjects]);
 
-  // Cells saved before the dropdown existed (free-typed "CC(NS)" style text)
-  // won't match any option — flag them so the CR knows to re-pick and re-save.
-  const staleCellCount = useMemo(
-    () => savedTimetable.filter((r) => r.subjectName?.trim() && !subjectOptions.includes(r.subjectName.trim())).length,
-    [savedTimetable, subjectOptions]
-  );
-
   // Grid state: cellText[day][slotIndex] — edited in place, saved as a batch.
   const [grid, setGrid] = useState<Record<string, string[]> | null>(null);
 
-  // Nothing saved for this section yet → start from the default timetable
-  // instead of a blank grid. The moment any row exists in Supabase, that
-  // real data takes over and the default is never consulted again. Default
-  // subject names are matched case-insensitively against the section's real
-  // synced subjects so they still land on a valid dropdown option even if
-  // the live casing differs slightly from what's hardcoded below.
-  const savedGrid = useMemo(() => {
+  // Any cell that isn't ALREADY an exact, recognized subject — empty, or
+  // free-typed legacy text like "CC(NS)" / "ML LAB(...)" saved before the
+  // dropdown existed — falls back to the known-good default for that
+  // day/period, so the class monitor reviews a working timetable instead of
+  // stale text. A cell that's already a real saved subject is left alone.
+  // Default names are matched case-insensitively against the section's live
+  // synced subjects so they land on a valid option even if the exact stored
+  // casing differs from what's hardcoded above.
+  const { grid: savedGrid, defaultedCount } = useMemo(() => {
     const g: Record<string, string[]> = {};
-    const startFromDefault = savedTimetable.length === 0;
-    const bySubjectLower = new Map(sectionSubjects.map((s) => [s.toLowerCase(), s]));
-    for (const d of DAYS_OF_WEEK) {
-      g[d] = startFromDefault
-        ? (DEFAULT_TIMETABLE[d] ?? TIME_SLOTS.map(() => "")).map(
-            (name) => bySubjectLower.get(name.toLowerCase()) ?? name
-          )
-        : TIME_SLOTS.map(() => "");
-    }
+    for (const d of DAYS_OF_WEEK) g[d] = TIME_SLOTS.map(() => "");
     for (const r of savedTimetable) {
       if (g[r.dayOfWeek] && r.periodNumber >= 0 && r.periodNumber < TIME_SLOTS.length) {
         g[r.dayOfWeek][r.periodNumber] = r.subjectName;
       }
     }
-    return g;
-  }, [savedTimetable, sectionSubjects]);
+
+    const validOptions = new Set(subjectOptions);
+    const bySubjectLower = new Map(sectionSubjects.map((s) => [s.toLowerCase(), s]));
+    let defaulted = 0;
+    for (const d of DAYS_OF_WEEK) {
+      const defaults = DEFAULT_TIMETABLE[d] ?? TIME_SLOTS.map(() => "");
+      g[d] = g[d].map((val, i) => {
+        if (val && validOptions.has(val)) return val; // already a real, correctly-saved subject
+        const fallback = defaults[i] ?? "";
+        if (fallback) defaulted++;
+        return fallback ? (bySubjectLower.get(fallback.toLowerCase()) ?? fallback) : val;
+      });
+    }
+    return { grid: g, defaultedCount: defaulted };
+  }, [savedTimetable, sectionSubjects, subjectOptions]);
 
   const activeGrid = grid ?? savedGrid;
   const setCell = (day: string, slotIndex: number, value: string) => {
@@ -182,21 +182,15 @@ function ClassManagementPage() {
                 </Button>
               </div>
 
-              {!ttLoading && savedTimetable.length === 0 && (
-                <div className="rounded-xl border border-brand-red/25 bg-brand-red/10 px-3.5 py-2.5 text-[11px] text-brand-red">
-                  Nothing's saved for your section yet, so this grid is pre-filled with the default 4 MCA-B timetable — review it and hit Save to make it official. Any edit before saving overwrites the default, not real data.
-                </div>
-              )}
-
               {!ttLoading && sectionSubjects.length === 0 && (
                 <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
                   No subjects found yet — the dropdown fills in automatically once your section's students connect Google Classroom / CUE sync on the Attendance page.
                 </div>
               )}
 
-              {!ttLoading && staleCellCount > 0 && (
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
-                  {staleCellCount} cell{staleCellCount > 1 ? "s were" : " was"} saved before the dropdown existed and won't match a listed subject — reselect and Save to clean them up.
+              {!ttLoading && defaultedCount > 0 && (
+                <div className="rounded-xl border border-brand-red/25 bg-brand-red/10 px-3.5 py-2.5 text-[11px] text-brand-red">
+                  {defaultedCount} cell{defaultedCount > 1 ? "s are" : " is"} showing the default 4 MCA-B timetable — either nothing was saved there yet, or it still holds free-typed text from before the dropdown existed. Review and hit Save to make it official; anything you don't change stays as this default.
                 </div>
               )}
 
