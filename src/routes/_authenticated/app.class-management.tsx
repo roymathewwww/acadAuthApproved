@@ -41,16 +41,21 @@ function ClassManagementPage() {
     queryFn: () => getSubjectsFn(),
   });
 
-  // Any already-saved cell text that isn't in the live subject list (e.g. an
-  // older "Code(Initials)/Room" entry) still needs to show up as a selectable
-  // option so existing data doesn't just disappear from the dropdown.
-  const subjectOptions = useMemo(() => {
-    const set = new Set(sectionSubjects);
-    for (const r of savedTimetable) {
-      if (r.subjectName?.trim()) set.add(r.subjectName.trim());
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [sectionSubjects, savedTimetable]);
+  // The dropdown lists ONLY the section's real synced subjects — nothing
+  // else. Older free-text cells ("CC(NS)", "ML LAB(...)", etc.) won't match
+  // any option and show as unselected until re-saved from this dropdown;
+  // that's intentional, not a bug — see the note on the info banner below.
+  const subjectOptions = useMemo(
+    () => [...sectionSubjects].sort((a, b) => a.localeCompare(b)),
+    [sectionSubjects]
+  );
+
+  // Cells saved before the dropdown existed (free-typed "CC(NS)" style text)
+  // won't match any option — flag them so the CR knows to re-pick and re-save.
+  const staleCellCount = useMemo(
+    () => savedTimetable.filter((r) => r.subjectName?.trim() && !subjectOptions.includes(r.subjectName.trim())).length,
+    [savedTimetable, subjectOptions]
+  );
 
   // Grid state: cellText[day][slotIndex] — edited in place, saved as a batch.
   const [grid, setGrid] = useState<Record<string, string[]> | null>(null);
@@ -148,6 +153,12 @@ function ClassManagementPage() {
               {!ttLoading && sectionSubjects.length === 0 && (
                 <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
                   No subjects found yet — the dropdown fills in automatically once your section's students connect Google Classroom / CUE sync on the Attendance page.
+                </div>
+              )}
+
+              {!ttLoading && staleCellCount > 0 && (
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
+                  {staleCellCount} cell{staleCellCount > 1 ? "s were" : " was"} saved before the dropdown existed and won't match a listed subject — reselect and Save to clean them up.
                 </div>
               )}
 

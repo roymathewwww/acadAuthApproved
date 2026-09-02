@@ -16,7 +16,7 @@ import {
 import { getTimetable } from "@/lib/class-roles.functions";
 import { TIME_SLOTS, DAYS_OF_WEEK, slotWeight, isSubjectCell, cellMatchesSubject } from "@/lib/timetable-slots";
 import {
-  Clock, CheckCircle2, XCircle, BookOpen, RefreshCw, Puzzle, Copy, Check,
+  Clock, CheckCircle2, XCircle, BookOpen, RefreshCw, Puzzle, Copy, Check, X,
   ChevronDown, ChevronRight, Calendar, TrendingUp, ShieldCheck, ShieldAlert,
   KeyRound, Loader2, Wifi, WifiOff, Calculator, ArrowRight,
 } from "lucide-react";
@@ -58,7 +58,7 @@ function AttendancePage() {
   const [impactScope, setImpactScope] = useState<"session" | "day" | "week">("session");
   const [impactDay, setImpactDay] = useState<string | null>(null);
   const [sessionDay, setSessionDay] = useState<string | null>(null);
-  const [sessionKey, setSessionKey] = useState<string | null>(null);
+  const [selectedSessionKeys, setSelectedSessionKeys] = useState<Set<string>>(new Set());
 
   const { data: timetable = [] } = useQuery({
     queryKey: ["classTimetable"],
@@ -187,22 +187,50 @@ function AttendancePage() {
     [sessionsByDay]
   );
 
-  const selectedSession = useMemo(
-    () => sessionOccurrences.find((o) => o.key === sessionKey) ?? null,
-    [sessionOccurrences, sessionKey]
+  const toggleSessionKey = (key: string) => {
+    setSelectedSessionKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Selections persist across day switches, so a student can build up an
+  // arbitrary combination — one period, a handful across the week, whatever
+  // the actual leave looks like — and see the combined effect.
+  const selectedSessions = useMemo(
+    () => sessionOccurrences.filter((o) => selectedSessionKeys.has(o.key)),
+    [sessionOccurrences, selectedSessionKeys]
   );
 
-  const selectedSessionImpact = useMemo(() => {
-    if (!selectedSession) return null;
-    const subj = subjects.find((s) => s.id === selectedSession.subjectId);
-    if (!subj) return null;
+  const selectedSessionsImpact = useMemo(() => {
+    if (selectedSessions.length === 0) return null;
+
+    const bySubject = new Map<string, { subjectId: string; subjectName: string; hours: number }>();
+    let totalHours = 0;
+    for (const o of selectedSessions) {
+      totalHours += o.hours;
+      const cur = bySubject.get(o.subjectId) ?? { subjectId: o.subjectId, subjectName: o.subjectName, hours: 0 };
+      cur.hours += o.hours;
+      bySubject.set(o.subjectId, cur);
+    }
+
+    const perSubject = Array.from(bySubject.values())
+      .map((entry) => {
+        const subj = subjects.find((s) => s.id === entry.subjectId);
+        if (!subj) return null;
+        const proj = project(subj.attended, subj.conducted, entry.hours);
+        return { ...entry, currentPct: subj.percentage, ifSkip: proj.ifSkip, ifAttend: proj.ifAttend };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
     return {
-      subject: subj,
-      hours: selectedSession.hours,
-      subjectProj: project(subj.attended, subj.conducted, selectedSession.hours),
-      overallProj: overall ? project(overall.totalAttended, overall.totalConducted, selectedSession.hours) : null,
+      totalHours,
+      perSubject,
+      overallProj: overall ? project(overall.totalAttended, overall.totalConducted, totalHours) : null,
     };
-  }, [selectedSession, subjects, overall]);
+  }, [selectedSessions, subjects, overall]);
 
   const dailyByDate = useMemo(() => {
     const groups = new Map<string, typeof daily>();
@@ -599,7 +627,7 @@ function AttendancePage() {
                     {/* Scope switcher */}
                     <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1 gap-1">
                       {([
-                        { id: "session", label: "Single Class" },
+                        { id: "session", label: "Pick Sessions" },
                         { id: "day", label: "Full Day" },
                         { id: "week", label: "Full Week" },
                       ] as const).map((opt) => (
@@ -617,7 +645,7 @@ function AttendancePage() {
                       ))}
                     </div>
 
-                    {/* ── Single Class: skip/attend one specific session ── */}
+                    {/* ── Pick Sessions: skip/attend any combination of specific classes ── */}
                     {impactScope === "session" && (
                       <div className="space-y-3">
                         <div>
@@ -626,7 +654,7 @@ function AttendancePage() {
                             {sessionDays.map((day) => (
                               <button
                                 key={day}
-                                onClick={() => { setSessionDay(day); setSessionKey(null); }}
+                                onClick={() => setSessionDay(day)}
                                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
                                   sessionDay === day
                                     ? "bg-brand-red text-brand-red-foreground border-brand-red"
@@ -641,20 +669,24 @@ function AttendancePage() {
 
                         {sessionDay && (
                           <div>
-                            <p className="text-[11px] font-bold text-foreground mb-2">Pick the class</p>
+                            <p className="text-[11px] font-bold text-foreground mb-2">
+                              Tap every class you'll miss on {sessionDay} — pick more than one, or switch days and keep picking.
+                            </p>
                             <div className="flex flex-wrap gap-1.5">
                               {(sessionsByDay.get(sessionDay) ?? []).map((o) => {
                                 const slot = TIME_SLOTS.find((t) => t.index === o.periodNumber);
+                                const checked = selectedSessionKeys.has(o.key);
                                 return (
                                   <button
                                     key={o.key}
-                                    onClick={() => setSessionKey(o.key)}
-                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
-                                      sessionKey === o.key
+                                    onClick={() => toggleSessionKey(o.key)}
+                                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                      checked
                                         ? "bg-brand-red text-brand-red-foreground border-brand-red"
                                         : "bg-card border-border text-muted-foreground hover:border-brand-red/40 hover:text-foreground"
                                     }`}
                                   >
+                                    {checked && <Check className="h-3 w-3" />}
                                     {o.subjectName}{slot ? ` · ${slot.label}` : ""}
                                   </button>
                                 );
@@ -663,51 +695,82 @@ function AttendancePage() {
                           </div>
                         )}
 
-                        {selectedSessionImpact && (
-                          <Card>
-                            <CardContent className="p-4 space-y-3">
-                              <p className="text-[11px] text-muted-foreground">
-                                Skipping <strong className="text-foreground">{selectedSessionImpact.subject.name}</strong> on{" "}
-                                <strong className="text-foreground">{sessionDay}</strong> ({selectedSessionImpact.hours}h):
+                        {selectedSessions.length > 0 && selectedSessionsImpact && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] font-bold text-foreground">
+                                {selectedSessions.length} class{selectedSessions.length > 1 ? "es" : ""} selected · {selectedSessionsImpact.totalHours}h total
                               </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="rounded-xl border border-border bg-muted/30 p-3">
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                                    {selectedSessionImpact.subject.name}
-                                  </p>
-                                  <div className="flex items-center gap-1.5 text-[11px]">
-                                    <span className="font-semibold text-foreground">{selectedSessionImpact.subject.percentage.toFixed(2)}%</span>
-                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                    <span className="font-bold text-brand-red">{selectedSessionImpact.subjectProj.ifSkip?.toFixed(2)}%</span>
-                                    <span className="text-muted-foreground">if skipped</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-[11px] mt-1">
-                                    <span className="font-semibold text-foreground">{selectedSessionImpact.subject.percentage.toFixed(2)}%</span>
-                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSessionImpact.subjectProj.ifAttend?.toFixed(2)}%</span>
-                                    <span className="text-muted-foreground">if attended</span>
-                                  </div>
+                              <button
+                                onClick={() => setSelectedSessionKeys(new Set())}
+                                className="text-[10px] font-semibold text-muted-foreground hover:text-brand-red transition-colors"
+                              >
+                                Clear all
+                              </button>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedSessions.map((o) => {
+                                const slot = TIME_SLOTS.find((t) => t.index === o.periodNumber);
+                                return (
+                                  <span
+                                    key={o.key}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-muted text-foreground border border-border"
+                                  >
+                                    {o.day} · {o.subjectName}{slot ? ` · ${slot.label}` : ""}
+                                    <button onClick={() => toggleSessionKey(o.key)} className="text-muted-foreground hover:text-brand-red">
+                                      <X className="h-2.5 w-2.5" />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+
+                            <Card>
+                              <CardContent className="p-4 space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {selectedSessionsImpact.perSubject.map((p) => (
+                                    <div key={p.subjectId} className="rounded-xl border border-border bg-muted/30 p-3">
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                        {p.subjectName} <span className="normal-case font-semibold text-muted-foreground/80">({p.hours}h)</span>
+                                      </p>
+                                      <div className="flex items-center gap-1.5 text-[11px]">
+                                        <span className="font-semibold text-foreground">{p.currentPct.toFixed(2)}%</span>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <span className="font-bold text-brand-red">{p.ifSkip?.toFixed(2)}%</span>
+                                        <span className="text-muted-foreground">if skipped</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-[11px] mt-1">
+                                        <span className="font-semibold text-foreground">{p.currentPct.toFixed(2)}%</span>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{p.ifAttend?.toFixed(2)}%</span>
+                                        <span className="text-muted-foreground">if attended</span>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                                {selectedSessionImpact.overallProj && overall && (
+                                {selectedSessionsImpact.overallProj && overall && (
                                   <div className="rounded-xl border border-border bg-muted/30 p-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Overall attendance</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                      Overall attendance ({selectedSessionsImpact.totalHours}h across {selectedSessionsImpact.perSubject.length} subject{selectedSessionsImpact.perSubject.length > 1 ? "s" : ""})
+                                    </p>
                                     <div className="flex items-center gap-1.5 text-[11px]">
                                       <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
                                       <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                      <span className="font-bold text-brand-red">{selectedSessionImpact.overallProj.ifSkip?.toFixed(2)}%</span>
-                                      <span className="text-muted-foreground">if skipped</span>
+                                      <span className="font-bold text-brand-red">{selectedSessionsImpact.overallProj.ifSkip?.toFixed(2)}%</span>
+                                      <span className="text-muted-foreground">if all selected are skipped</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-[11px] mt-1">
                                       <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
                                       <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSessionImpact.overallProj.ifAttend?.toFixed(2)}%</span>
-                                      <span className="text-muted-foreground">if attended</span>
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSessionsImpact.overallProj.ifAttend?.toFixed(2)}%</span>
+                                      <span className="text-muted-foreground">if all selected are attended</span>
                                     </div>
                                   </div>
                                 )}
-                              </div>
-                            </CardContent>
-                          </Card>
+                              </CardContent>
+                            </Card>
+                          </div>
                         )}
                       </div>
                     )}
