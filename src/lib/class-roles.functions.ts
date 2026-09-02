@@ -312,7 +312,14 @@ export const removeClassLeader = createServerFn({ method: "POST" })
 // ─── Server Function: upload/replace the section timetable (CR only) ───────
 const timetableRowSchema = z.object({
   dayOfWeek: z.string().min(1).max(20),
-  periodNumber: z.number().int().min(1).max(20),
+  // 0-based, matching TIME_SLOTS in timetable-slots.ts (index 0 = the first,
+  // 2-hour period) — every reader (getTimetable, the Attendance calculator,
+  // the Class Management grid) already treats period 0 as valid. A stray
+  // min(1) here silently rejected the ENTIRE rows array on every save that
+  // included a first period — i.e. on every real save — since the array is
+  // validated as a whole, so nothing with a first-period class ever
+  // persisted through this endpoint.
+  periodNumber: z.number().int().min(0).max(20),
   startTime: z.string().max(20).optional(),
   endTime: z.string().max(20).optional(),
   subjectCode: z.string().max(40).optional(),
