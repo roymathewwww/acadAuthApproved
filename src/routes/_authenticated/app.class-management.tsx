@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import {
-  listMySectionStudents, getTimetable, upsertTimetable,
+  listMySectionStudents, getTimetable, upsertTimetable, getSectionSubjects,
 } from "@/lib/class-roles.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,7 @@ function ClassManagementPage() {
   const listFn = useServerFn(listMySectionStudents);
   const getTimetableFn = useServerFn(getTimetable);
   const upsertFn = useServerFn(upsertTimetable);
+  const getSubjectsFn = useServerFn(getSectionSubjects);
 
   const { data: roster = [], isLoading: rosterLoading } = useQuery({
     queryKey: ["sectionRoster"],
@@ -34,6 +35,22 @@ function ClassManagementPage() {
     queryKey: ["classTimetable"],
     queryFn: () => getTimetableFn(),
   });
+
+  const { data: sectionSubjects = [] } = useQuery({
+    queryKey: ["sectionSubjects"],
+    queryFn: () => getSubjectsFn(),
+  });
+
+  // Any already-saved cell text that isn't in the live subject list (e.g. an
+  // older "Code(Initials)/Room" entry) still needs to show up as a selectable
+  // option so existing data doesn't just disappear from the dropdown.
+  const subjectOptions = useMemo(() => {
+    const set = new Set(sectionSubjects);
+    for (const r of savedTimetable) {
+      if (r.subjectName?.trim()) set.add(r.subjectName.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [sectionSubjects, savedTimetable]);
 
   // Grid state: cellText[day][slotIndex] — edited in place, saved as a batch.
   const [grid, setGrid] = useState<Record<string, string[]> | null>(null);
@@ -120,13 +137,19 @@ function ClassManagementPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Edit any cell, then Save — every student in your section sees this from their Attendance page.
+                  Pick a subject for any cell, then Save — every student in your section sees this from their Attendance page.
                   First period counts as 2 hours for attendance (1 hour on Saturday); every other period counts as 1.
                 </p>
                 <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending} className="gap-1 shrink-0">
                   {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
                 </Button>
               </div>
+
+              {!ttLoading && sectionSubjects.length === 0 && (
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
+                  No subjects found yet — the dropdown fills in automatically once your section's students connect Google Classroom / CUE sync on the Attendance page.
+                </div>
+              )}
 
               {ttLoading ? (
                 <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 text-muted-foreground animate-spin" /></div>
@@ -152,13 +175,16 @@ function ClassManagementPage() {
                           <td className="p-2.5 font-bold text-foreground bg-muted/30">{day}</td>
                           {TIME_SLOTS.map((slot) => (
                             <td key={slot.index} className="p-1.5 align-top">
-                              <textarea
+                              <select
                                 value={activeGrid[day]?.[slot.index] || ""}
                                 onChange={(e) => setCell(day, slot.index, e.target.value)}
-                                rows={2}
-                                placeholder="—"
-                                className="w-full min-w-[110px] resize-none rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-red/40 focus:border-brand-red/40"
-                              />
+                                className="w-full min-w-[110px] rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-brand-red/40 focus:border-brand-red/40"
+                              >
+                                <option value="">—</option>
+                                {subjectOptions.map((name) => (
+                                  <option key={name} value={name}>{name}</option>
+                                ))}
+                              </select>
                             </td>
                           ))}
                         </tr>

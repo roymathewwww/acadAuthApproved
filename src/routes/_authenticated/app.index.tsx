@@ -19,9 +19,6 @@ export const Route = createFileRoute("/_authenticated/app/")({
   beforeLoad: async () => {
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("demo_user_role");
-      if (role === "admin") {
-        throw redirect({ to: "/admin" });
-      }
       // Teacher's "Dashboard" nav item is the class roster, not this
       // student-oriented home page — send them straight there.
       if (role === "teacher") {

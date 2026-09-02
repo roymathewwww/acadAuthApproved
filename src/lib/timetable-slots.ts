@@ -54,6 +54,13 @@ export function subjectInitials(name: string): string {
 /** Does this timetable cell's leading code plausibly refer to `subjectName`? */
 export function cellMatchesSubject(cellText: string, subjectName: string, subjectCode?: string | null): boolean {
   const lead = leadingCode(cellText).toUpperCase().replace(/\s+/g, "");
+
+  // The class-management timetable editor now stores the exact subject name
+  // (picked from a dropdown), so a plain full-name match is the common case.
+  if (lead === subjectName.toUpperCase().replace(/\s+/g, "")) return true;
+
+  // Older cells may still use a short code / initials — e.g. "CC(NS)" —
+  // kept for backward compatibility with timetables saved before the dropdown.
   if (subjectCode) {
     const normCode = subjectCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (normCode && (lead === normCode || normCode.startsWith(lead) || lead.startsWith(normCode))) return true;

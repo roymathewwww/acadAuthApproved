@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Shield, GraduationCap, CheckCircle2, Sparkles, Mail, Lock, User as UserIcon } from "lucide-react";
+import { Loader2, GraduationCap, CheckCircle2, Sparkles, Mail, Lock, User as UserIcon } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -73,9 +73,8 @@ function AuthPage() {
     }).catch(() => {});
 
     const demoToken = localStorage.getItem("demo_session_token");
-    const storedRole = localStorage.getItem("demo_user_role");
     if (demoToken) {
-      navigate({ to: storedRole === "admin" ? "/admin" : "/app", replace: true });
+      navigate({ to: "/app", replace: true });
     }
   }, [navigate, location.pathname]);
 
@@ -135,15 +134,6 @@ function AuthPage() {
     }
   }
 
-  function handleAdminDemoLogin() {
-    localStorage.setItem("demo_session_token", "demo_admin_token");
-    localStorage.setItem("demo_user_id", "admin_user");
-    localStorage.setItem("demo_user_email", "admin@acadsphere.edu");
-    localStorage.setItem("demo_user_role", "admin");
-    toast.success("Signed in as Academic Controller");
-    navigate({ to: "/admin", replace: true });
-  }
-
   /* — Standard Email / Password Sign In & Sign Up Handler — */
   async function handleEmailPasswordAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -183,10 +173,7 @@ function AuthPage() {
             return;
           }
 
-          const isRoleAdmin =
-            trimmedEmail.toLowerCase().includes("admin") ||
-            user.user_metadata?.role === "admin";
-          const assignedRole = isRoleAdmin ? "admin" : "student";
+          const assignedRole = user.user_metadata?.role || "student";
 
           localStorage.setItem("demo_session_token", `sb_session_${user.id}`);
           localStorage.setItem("demo_user_id", user.id);
@@ -213,7 +200,7 @@ function AuthPage() {
           } catch (_) {}
 
           toast.success(`Welcome back, ${user.email}!`);
-          navigate({ to: assignedRole === "admin" ? "/admin" : "/app", replace: true });
+          navigate({ to: "/app", replace: true });
           return;
         }
 
@@ -222,15 +209,13 @@ function AuthPage() {
           const result = await localLoginFn({
             data: { email: trimmedEmail, password, name: name || undefined },
           });
-          const isRoleAdmin = trimmedEmail.toLowerCase().includes("admin") || result.role === "admin";
-          const assignedRole = isRoleAdmin ? "admin" : "student";
 
           localStorage.setItem("demo_session_token", result.token);
           localStorage.setItem("demo_user_id", result.userId);
           localStorage.setItem("demo_user_email", result.email);
-          localStorage.setItem("demo_user_role", assignedRole);
+          localStorage.setItem("demo_user_role", result.role || "student");
           toast.success(`Welcome, ${result.name || result.email}!`);
-          navigate({ to: assignedRole === "admin" ? "/admin" : "/app", replace: true });
+          navigate({ to: "/app", replace: true });
           return;
         } catch (_) {
           // Show Supabase error if neither succeeded
@@ -502,25 +487,16 @@ function AuthPage() {
             <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">
               Quick University Demo Access
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                onClick={handleDemoLogin}
-                disabled={demoLoading}
-                variant="outline"
-                type="button"
-                className="h-9 text-xs font-bold gap-1.5 border-[#E0DDD4] bg-white text-[#0A0A0A] hover:bg-[#EAE7DC]"
-              >
-                <GraduationCap className="h-3.5 w-3.5 text-[#0A0A0A]" />
-                Demo Student
-              </Button>
-              <Button
-                onClick={handleAdminDemoLogin}
-                type="button"
-                className="h-9 text-xs bg-[#0A0A0A] text-white font-bold gap-1.5 hover:opacity-90 shadow-sm"
-              >
-                <Shield className="h-3.5 w-3.5" /> Admin ERP
-              </Button>
-            </div>
+            <Button
+              onClick={handleDemoLogin}
+              disabled={demoLoading}
+              variant="outline"
+              type="button"
+              className="w-full h-9 text-xs font-bold gap-1.5 border-[#E0DDD4] bg-white text-[#0A0A0A] hover:bg-[#EAE7DC]"
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-[#0A0A0A]" />
+              Demo Student
+            </Button>
           </div>
 
         </div>

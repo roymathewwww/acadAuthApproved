@@ -88,7 +88,7 @@ function Landing() {
       setIsAuthSuccess(true);
       toast.success(`Welcome back, ${result.name || result.email}!`);
       setTimeout(() => {
-        navigate({ to: result.role === "admin" ? "/admin" : "/app", replace: true });
+        navigate({ to: "/app", replace: true });
       }, 350);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Login failed");
@@ -108,7 +108,7 @@ function Landing() {
       setIsAuthSuccess(true);
       toast.success("Signed in as Demo Student");
       setTimeout(() => {
-        navigate({ to: result.role === "admin" ? "/admin" : "/app", replace: true });
+        navigate({ to: "/app", replace: true });
       }, 350);
     } catch (err) {
       toast.error("Demo login failed");

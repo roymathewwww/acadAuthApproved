@@ -32,6 +32,17 @@ const statusStyles: Record<string, { text: string; bg: string; bar: string }> = 
   Critical:  { text: "text-brand-red",                          bg: "bg-brand-red/10 border-brand-red/25",     bar: "bg-brand-red" },
 };
 
+// Projects a percentage forward by `hours` worth of upcoming class(es), for
+// both choices — attend them all, or skip them all. Shared by every scope of
+// the leave-impact calculator (single session / whole day / whole week).
+function project(attended: number, conducted: number, hours: number): { ifAttend: number | null; ifSkip: number | null } {
+  if (hours <= 0) return { ifAttend: null, ifSkip: null };
+  return {
+    ifAttend: Number((((attended + hours) / (conducted + hours)) * 100).toFixed(2)),
+    ifSkip: Number(((attended / (conducted + hours)) * 100).toFixed(2)),
+  };
+}
+
 function AttendancePage() {
   const qc = useQueryClient();
   const getDashboardFn = useServerFn(getAttendanceDashboardData);
@@ -44,7 +55,10 @@ function AttendancePage() {
   const [logExpanded, setLogExpanded] = useState(false);
   const [timetableExpanded, setTimetableExpanded] = useState(false);
   const [impactExpanded, setImpactExpanded] = useState(false);
+  const [impactScope, setImpactScope] = useState<"session" | "day" | "week">("session");
   const [impactDay, setImpactDay] = useState<string | null>(null);
+  const [sessionDay, setSessionDay] = useState<string | null>(null);
+  const [sessionKey, setSessionKey] = useState<string | null>(null);
 
   const { data: timetable = [] } = useQuery({
     queryKey: ["classTimetable"],
@@ -89,45 +103,106 @@ function AttendancePage() {
 
   // ── Gain/lose attendance calculator, driven by the real timetable ────────
   // Matches each timetable cell to a real synced subject by leading-code/
-  // initials (e.g. "CC(NS)" -> "Cloud Computing"), weights each match by the
-  // 2h-first-period rule, and projects the effect of attending/skipping.
+  // initials (e.g. "CC(NS)" -> "Cloud Computing") or, for cells picked from
+  // the new Class Management dropdown, the exact subject name — then weights
+  // each match by the 2h-first-period rule and projects attend-vs-skip.
   const subjectImpacts = useMemo(() => {
     return subjects.map((s) => {
-      const occurrences: { day: string; hours: number }[] = [];
+      const occurrences: { day: string; periodNumber: number; hours: number }[] = [];
       for (const cell of timetable) {
         if (!isSubjectCell(cell.subjectName)) continue;
         if (cellMatchesSubject(cell.subjectName, s.name, s.code)) {
-          occurrences.push({ day: cell.dayOfWeek, hours: slotWeight(cell.dayOfWeek, cell.periodNumber) });
+          occurrences.push({ day: cell.dayOfWeek, periodNumber: cell.periodNumber, hours: slotWeight(cell.dayOfWeek, cell.periodNumber) });
         }
       }
       const weeklyHours = occurrences.reduce((sum, o) => sum + o.hours, 0);
-      const pctIfAttendAllWeek = weeklyHours > 0
-        ? Number((((s.attended + weeklyHours) / (s.conducted + weeklyHours)) * 100).toFixed(2))
-        : null;
-      const pctIfSkipAllWeek = weeklyHours > 0
-        ? Number(((s.attended / (s.conducted + weeklyHours)) * 100).toFixed(2))
-        : null;
-      return { ...s, weeklyHours, occurrences, pctIfAttendAllWeek, pctIfSkipAllWeek };
+      const weekProj = project(s.attended, s.conducted, weeklyHours);
+      const overallWeekProj = overall ? project(overall.totalAttended, overall.totalConducted, weeklyHours) : null;
+      return {
+        ...s, weeklyHours, occurrences,
+        pctIfAttendAllWeek: weekProj.ifAttend,
+        pctIfSkipAllWeek: weekProj.ifSkip,
+        overallPctIfAttendAllWeek: overallWeekProj?.ifAttend ?? null,
+        overallPctIfSkipAllWeek: overallWeekProj?.ifSkip ?? null,
+      };
     }).filter((s) => s.weeklyHours > 0);
-  }, [subjects, timetable]);
+  }, [subjects, timetable, overall]);
 
   const dayImpacts = useMemo(() => {
     return DAYS_OF_WEEK.map((day) => {
-      const affected: { name: string; hours: number }[] = [];
+      const affected: { id: string; name: string; hours: number; currentPct: number; ifSkip: number | null; ifAttend: number | null }[] = [];
       let totalHours = 0;
       for (const s of subjectImpacts) {
         const hoursToday = s.occurrences.filter((o) => o.day === day).reduce((sum, o) => sum + o.hours, 0);
         if (hoursToday > 0) {
-          affected.push({ name: s.name, hours: hoursToday });
+          const proj = project(s.attended, s.conducted, hoursToday);
+          affected.push({ id: s.id, name: s.name, hours: hoursToday, currentPct: s.percentage, ifSkip: proj.ifSkip, ifAttend: proj.ifAttend });
           totalHours += hoursToday;
         }
       }
-      const overallPctIfSkipped = overall && totalHours > 0
-        ? Number(((overall.totalAttended / (overall.totalConducted + totalHours)) * 100).toFixed(2))
-        : null;
-      return { day, totalHours, affected, overallPctIfSkipped };
+      const overallProj = overall ? project(overall.totalAttended, overall.totalConducted, totalHours) : null;
+      return {
+        day, totalHours, affected,
+        overallPctIfSkipped: overallProj?.ifSkip ?? null,
+        overallPctIfAttended: overallProj?.ifAttend ?? null,
+      };
     }).filter((d) => d.totalHours > 0);
   }, [subjectImpacts, overall]);
+
+  // ── Single-session leave calculator — every individual timetable slot,
+  // so a student can ask "what if I skip just this one class?" rather than
+  // the whole day or the whole week.
+  const sessionOccurrences = useMemo(() => {
+    const list: { key: string; day: string; periodNumber: number; startTime: string | null; subjectId: string; subjectName: string; hours: number }[] = [];
+    for (const cell of timetable) {
+      if (!isSubjectCell(cell.subjectName)) continue;
+      const matched = subjects.find((s) => cellMatchesSubject(cell.subjectName, s.name, s.code));
+      if (!matched) continue;
+      list.push({
+        key: `${cell.dayOfWeek}-${cell.periodNumber}`,
+        day: cell.dayOfWeek,
+        periodNumber: cell.periodNumber,
+        startTime: cell.startTime,
+        subjectId: matched.id,
+        subjectName: matched.name,
+        hours: slotWeight(cell.dayOfWeek, cell.periodNumber),
+      });
+    }
+    return list;
+  }, [timetable, subjects]);
+
+  const sessionsByDay = useMemo(() => {
+    const map = new Map<string, typeof sessionOccurrences>();
+    for (const o of sessionOccurrences) {
+      const list = map.get(o.day) ?? [];
+      list.push(o);
+      map.set(o.day, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.periodNumber - b.periodNumber);
+    return map;
+  }, [sessionOccurrences]);
+
+  const sessionDays = useMemo(
+    () => DAYS_OF_WEEK.filter((d) => (sessionsByDay.get(d)?.length ?? 0) > 0),
+    [sessionsByDay]
+  );
+
+  const selectedSession = useMemo(
+    () => sessionOccurrences.find((o) => o.key === sessionKey) ?? null,
+    [sessionOccurrences, sessionKey]
+  );
+
+  const selectedSessionImpact = useMemo(() => {
+    if (!selectedSession) return null;
+    const subj = subjects.find((s) => s.id === selectedSession.subjectId);
+    if (!subj) return null;
+    return {
+      subject: subj,
+      hours: selectedSession.hours,
+      subjectProj: project(subj.attended, subj.conducted, selectedSession.hours),
+      overallProj: overall ? project(overall.totalAttended, overall.totalConducted, selectedSession.hours) : null,
+    };
+  }, [selectedSession, subjects, overall]);
 
   const dailyByDate = useMemo(() => {
     const groups = new Map<string, typeof daily>();
@@ -499,7 +574,7 @@ function AttendancePage() {
             </div>
           )}
 
-          {/* ── Attendance Impact Calculator ── */}
+          {/* ── Leave Impact Calculator ── */}
           {subjectImpacts.length > 0 && (
             <div>
               <button
@@ -507,7 +582,7 @@ function AttendancePage() {
                 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 hover:text-foreground transition-colors"
               >
                 {impactExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                <Calculator className="h-3.5 w-3.5" /> Attendance Impact Calculator
+                <Calculator className="h-3.5 w-3.5" /> Leave Impact Calculator
               </button>
               <AnimatePresence>
                 {impactExpanded && (
@@ -521,39 +596,126 @@ function AttendancePage() {
                       Computed from your class's timetable matched against your synced subjects — the first period counts as 2 hours (1 on Saturday), every other period counts as 1.
                     </p>
 
-                    {/* Per-subject */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {subjectImpacts.map((s) => (
-                        <Card key={s.id}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="text-xs font-bold text-foreground">{s.name}</p>
-                              <span className="text-[10px] font-mono text-muted-foreground">{s.weeklyHours}h/week</span>
-                            </div>
-                            <div className="space-y-1.5 text-[11px]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-muted-foreground w-28 shrink-0">Attend this week</span>
-                                <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
-                                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.pctIfAttendAllWeek?.toFixed(2)}%</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-muted-foreground w-28 shrink-0">Skip this week</span>
-                                <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
-                                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                                <span className="font-bold text-brand-red">{s.pctIfSkipAllWeek?.toFixed(2)}%</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                    {/* Scope switcher */}
+                    <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1 gap-1">
+                      {([
+                        { id: "session", label: "Single Class" },
+                        { id: "day", label: "Full Day" },
+                        { id: "week", label: "Full Week" },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setImpactScope(opt.id)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                            impactScope === opt.id
+                              ? "bg-brand-red text-brand-red-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
                       ))}
                     </div>
 
-                    {/* Whole-day skip */}
-                    {dayImpacts.length > 0 && (
-                      <div>
-                        <p className="text-[11px] font-bold text-foreground mb-2">If you skip an entire day…</p>
-                        <div className="flex flex-wrap gap-1.5 mb-3">
+                    {/* ── Single Class: skip/attend one specific session ── */}
+                    {impactScope === "session" && (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[11px] font-bold text-foreground mb-2">Pick a day</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sessionDays.map((day) => (
+                              <button
+                                key={day}
+                                onClick={() => { setSessionDay(day); setSessionKey(null); }}
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                  sessionDay === day
+                                    ? "bg-brand-red text-brand-red-foreground border-brand-red"
+                                    : "bg-card border-border text-muted-foreground hover:border-brand-red/40 hover:text-foreground"
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {sessionDay && (
+                          <div>
+                            <p className="text-[11px] font-bold text-foreground mb-2">Pick the class</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(sessionsByDay.get(sessionDay) ?? []).map((o) => {
+                                const slot = TIME_SLOTS.find((t) => t.index === o.periodNumber);
+                                return (
+                                  <button
+                                    key={o.key}
+                                    onClick={() => setSessionKey(o.key)}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                      sessionKey === o.key
+                                        ? "bg-brand-red text-brand-red-foreground border-brand-red"
+                                        : "bg-card border-border text-muted-foreground hover:border-brand-red/40 hover:text-foreground"
+                                    }`}
+                                  >
+                                    {o.subjectName}{slot ? ` · ${slot.label}` : ""}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedSessionImpact && (
+                          <Card>
+                            <CardContent className="p-4 space-y-3">
+                              <p className="text-[11px] text-muted-foreground">
+                                Skipping <strong className="text-foreground">{selectedSessionImpact.subject.name}</strong> on{" "}
+                                <strong className="text-foreground">{sessionDay}</strong> ({selectedSessionImpact.hours}h):
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="rounded-xl border border-border bg-muted/30 p-3">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                    {selectedSessionImpact.subject.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[11px]">
+                                    <span className="font-semibold text-foreground">{selectedSessionImpact.subject.percentage.toFixed(2)}%</span>
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    <span className="font-bold text-brand-red">{selectedSessionImpact.subjectProj.ifSkip?.toFixed(2)}%</span>
+                                    <span className="text-muted-foreground">if skipped</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[11px] mt-1">
+                                    <span className="font-semibold text-foreground">{selectedSessionImpact.subject.percentage.toFixed(2)}%</span>
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSessionImpact.subjectProj.ifAttend?.toFixed(2)}%</span>
+                                    <span className="text-muted-foreground">if attended</span>
+                                  </div>
+                                </div>
+                                {selectedSessionImpact.overallProj && overall && (
+                                  <div className="rounded-xl border border-border bg-muted/30 p-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Overall attendance</p>
+                                    <div className="flex items-center gap-1.5 text-[11px]">
+                                      <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                      <span className="font-bold text-brand-red">{selectedSessionImpact.overallProj.ifSkip?.toFixed(2)}%</span>
+                                      <span className="text-muted-foreground">if skipped</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-[11px] mt-1">
+                                      <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSessionImpact.overallProj.ifAttend?.toFixed(2)}%</span>
+                                      <span className="text-muted-foreground">if attended</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Full Day: skip every class on one day ── */}
+                    {impactScope === "day" && dayImpacts.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-1.5">
                           {dayImpacts.map((d) => (
                             <button
                               key={d.day}
@@ -572,29 +734,75 @@ function AttendancePage() {
                           const d = dayImpacts.find((x) => x.day === impactDay)!;
                           return (
                             <Card>
-                              <CardContent className="p-4">
-                                <p className="text-[11px] text-muted-foreground mb-2">
+                              <CardContent className="p-4 space-y-3">
+                                <p className="text-[11px] text-muted-foreground">
                                   Skipping all of <strong className="text-foreground">{d.day}</strong> ({d.totalHours}h) affects:
                                 </p>
-                                <div className="flex flex-wrap gap-1.5 mb-3">
-                                  {d.affected.map((a, i) => (
-                                    <span key={i} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-muted text-foreground border border-border">
-                                      {a.name} ({a.hours}h)
-                                    </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {d.affected.map((a) => (
+                                    <div key={a.id} className="rounded-xl border border-border bg-muted/30 p-2.5">
+                                      <p className="text-[10px] font-bold text-foreground mb-1">
+                                        {a.name} <span className="text-muted-foreground font-normal">({a.hours}h)</span>
+                                      </p>
+                                      <div className="flex items-center gap-1.5 text-[11px]">
+                                        <span className="font-semibold text-foreground">{a.currentPct.toFixed(2)}%</span>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <span className="font-bold text-brand-red">{a.ifSkip?.toFixed(2)}%</span>
+                                      </div>
+                                    </div>
                                   ))}
                                 </div>
                                 {d.overallPctIfSkipped !== null && overall && (
-                                  <div className="flex items-center gap-1.5 text-xs">
+                                  <div className="flex flex-wrap items-center gap-1.5 text-xs pt-2 border-t border-border/60">
                                     <span className="text-muted-foreground">Overall attendance</span>
                                     <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
                                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
                                     <span className="font-bold text-brand-red">{d.overallPctIfSkipped.toFixed(2)}%</span>
+                                    <span className="text-muted-foreground">if the whole day is skipped</span>
                                   </div>
                                 )}
                               </CardContent>
                             </Card>
                           );
                         })()}
+                      </div>
+                    )}
+
+                    {/* ── Full Week: skip every occurrence of one subject ── */}
+                    {impactScope === "week" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {subjectImpacts.map((s) => (
+                          <Card key={s.id}>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-bold text-foreground">{s.name}</p>
+                                <span className="text-[10px] font-mono text-muted-foreground">{s.weeklyHours}h/week</span>
+                              </div>
+                              <div className="space-y-1.5 text-[11px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-muted-foreground w-28 shrink-0">Attend this week</span>
+                                  <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.pctIfAttendAllWeek?.toFixed(2)}%</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-muted-foreground w-28 shrink-0">Skip this week</span>
+                                  <span className="font-semibold text-foreground">{s.percentage.toFixed(2)}%</span>
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  <span className="font-bold text-brand-red">{s.pctIfSkipAllWeek?.toFixed(2)}%</span>
+                                </div>
+                                {overall && (
+                                  <div className="flex items-center gap-1.5 pt-1.5 mt-1 border-t border-border/60">
+                                    <span className="text-muted-foreground w-28 shrink-0">Overall if skipped</span>
+                                    <span className="font-semibold text-foreground">{overall.percentage.toFixed(2)}%</span>
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                    <span className="font-bold text-brand-red">{s.overallPctIfSkipAllWeek?.toFixed(2)}%</span>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
                     )}
                   </motion.div>

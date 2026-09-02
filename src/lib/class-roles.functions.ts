@@ -133,6 +133,41 @@ export const listMySectionStudents = createServerFn({ method: "GET" })
     });
   });
 
+// ─── Server Function: current-semester subject list for the timetable dropdown
+// (teacher + CR) — derived from whatever subjects the section's own students
+// already have synced from Google Classroom / the CUE portal, so it's always
+// the real current-semester subjects, never a guessed/hardcoded curriculum.
+export const getSectionSubjects = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<string[]> => {
+    const caller = await requireRole(context.userId, ["teacher", "class_leader"]);
+    if (!supabaseServer) throw new Error("Database unavailable");
+    if (!caller.section) return [];
+
+    const { data: profiles, error } = await supabaseServer
+      .from("profiles")
+      .select("id")
+      .eq("section", caller.section)
+      .in("role", ["student", "class_leader"]);
+    if (error) throw new Error(`Failed to load section: ${error.message}`);
+
+    const ids = (profiles || []).map((p: any) => p.id);
+    if (ids.length === 0) return [];
+
+    const { data: rows, error: attErr } = await supabaseServer
+      .from("student_attendance")
+      .select("subject_name")
+      .in("user_id", ids);
+    if (attErr) throw new Error(`Failed to load subjects: ${attErr.message}`);
+
+    const names = new Set<string>();
+    for (const r of rows || []) {
+      const name = (r as any).subject_name;
+      if (name && String(name).trim()) names.add(String(name).trim());
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  });
+
 // ─── Server Function: create a new student account (teacher only) ──────────
 export const createStudentAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

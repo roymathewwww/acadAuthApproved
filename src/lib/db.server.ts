@@ -336,21 +336,6 @@ try {
     // column already exists — safe to ignore
   }
 
-  // ─── Seed Admin User (admin@gmail.com / iamadmin@1) ──────────────────────
-  const ADMIN_EMAIL = "admin@gmail.com";
-  const ADMIN_ID = "00000000-0000-0000-0000-000000000001";
-  const ADMIN_HASH = crypto.createHash("sha256").update("iamadmin@1").digest("hex");
-  try {
-    const existingAdmin = db.prepare("SELECT id FROM users WHERE email = ?").get(ADMIN_EMAIL);
-    if (!existingAdmin) {
-      db.prepare("INSERT OR IGNORE INTO users (id, email, password_hash, status) VALUES (?, ?, ?, ?)").run(ADMIN_ID, ADMIN_EMAIL, ADMIN_HASH, "active");
-      db.prepare("INSERT OR IGNORE INTO profiles (id, full_name, role) VALUES (?, ?, ?)").run(ADMIN_ID, "Administrator", "admin");
-      console.log("[SQLite] Admin user seeded:", ADMIN_EMAIL);
-    }
-  } catch (e) {
-    console.warn("[SQLite] Admin seed error:", e);
-  }
-
   // Dummy/demo student seeding intentionally disabled — the local fallback
   // DB starts empty and stays empty until real records are added.
   // (seedMCAStudents() is kept below, unused, in case demo data is wanted

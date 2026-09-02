@@ -13,7 +13,7 @@ import { getAnalyticsSummary, updateProfile } from "@/lib/analytics.functions";
 import { deriveDepartment } from "@/lib/derive-department";
 import { toast } from "sonner";
 import {
-  Edit3, Check, Loader2, Shield, Building2, Mail, LogOut, Phone, MessageCircle,
+  Edit3, Check, Loader2, Building2, Mail, LogOut, Phone, MessageCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -36,9 +36,6 @@ function ProfilePage() {
   const [profileForm, setProfileForm] = useState({
     fullName: "", degree: "", semester: "", targetRole: "", skills: "",
   });
-
-  const userRole = typeof window !== "undefined" ? (localStorage.getItem("demo_user_role") || "student") : "student";
-  const isAdmin = userRole === "admin";
 
   const saveProfile = useMutation({
     mutationFn: (data: typeof profileForm) => updateProfileFn({ data }),
@@ -130,17 +127,16 @@ function ProfilePage() {
     navigate({ to: "/" });
   }
 
+  const userRole = typeof window !== "undefined" ? (localStorage.getItem("demo_user_role") || "student") : "student";
   const storedName = typeof window !== "undefined" ? localStorage.getItem("demo_user_name") : null;
   const storedEmail = typeof window !== "undefined" ? localStorage.getItem("demo_user_email") : null;
   const storedAvatar = typeof window !== "undefined" ? localStorage.getItem("demo_user_avatar") : null;
 
   const profile = analytics?.profile;
-  const displayName = isAdmin
-    ? "Academic Controller"
-    : (sessionUser?.name || storedName || profile?.fullName || storedEmail?.split("@")[0] || "Christ Student");
+  const displayName = sessionUser?.name || storedName || profile?.fullName || storedEmail?.split("@")[0] || "Christ Student";
   const displayEmail = sessionUser?.email || storedEmail || "";
   const displayDegree = profile?.degree || deriveDepartment(displayEmail);
-  const displayRole = isAdmin ? "Institutional Oversight Officer" : (profile?.targetRole || "");
+  const displayRole = profile?.targetRole || "";
 
   const initials = displayName
     .split(" ").map((n: string) => n[0]).filter(Boolean).join("").substring(0, 2).toUpperCase() || "CS";
@@ -189,11 +185,6 @@ function ProfilePage() {
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-display font-black tracking-tight text-foreground">{displayName}</h1>
-                {isAdmin && (
-                  <span className="text-[10px] font-bold bg-muted text-foreground px-2 py-0.5 rounded-full border border-border font-mono">
-                    Admin Controller
-                  </span>
-                )}
               </div>
 
               {displayEmail && (
@@ -213,27 +204,16 @@ function ProfilePage() {
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Christ University (Bangalore)
                 </span>
-                {isAdmin ? (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full">
-                    <Shield className="h-3.5 w-3.5" /> Full Access
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
-                    {displayDegree}{profile?.semester ? ` · ${profile.semester}` : ""}
-                  </span>
-                )}
+                <span className="text-[11px] font-semibold bg-muted border border-border px-3 py-1 rounded-full text-foreground">
+                  {displayDegree}{profile?.semester ? ` · ${profile.semester}` : ""}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              {!isAdmin && !isEditing && (
+              {!isEditing && (
                 <Button onClick={startEdit} variant="outline" className="h-9 text-xs font-bold gap-1.5">
                   <Edit3 className="h-3.5 w-3.5" /> Edit Profile
-                </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={() => navigate({ to: "/admin" })} className="h-9 text-xs font-bold gap-1.5 shrink-0">
-                  <Shield className="h-3.5 w-3.5" /> Admin Overview
                 </Button>
               )}
             </div>
@@ -294,7 +274,7 @@ function ProfilePage() {
                     { label: "Full Name", value: displayName },
                     { label: "Email Address", value: displayEmail || "—" },
                     { label: "Institution", value: "Christ University (Bangalore)" },
-                    { label: "Account Role", value: isAdmin ? "Academic Controller" : (userRole === "class_leader" ? "Class Leader" : "Student") },
+                    { label: "Account Role", value: userRole === "class_leader" ? "Class Leader" : userRole === "teacher" ? "Class Teacher" : "Student" },
                     { label: "Degree", value: displayDegree },
                   ].map((item) => (
                     <div key={item.label} className="border-b border-border/60 pb-2 last:border-0 last:pb-0">

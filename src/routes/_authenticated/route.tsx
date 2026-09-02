@@ -6,16 +6,6 @@ import { deriveDepartment } from "@/lib/derive-department";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    // Check role from localStorage
-    const role = typeof window !== "undefined"
-      ? localStorage.getItem("demo_user_role")
-      : null;
-
-    // Strict redirect: Admin users MUST be sent to /admin
-    if (role === "admin") {
-      throw redirect({ to: "/admin" });
-    }
-
     // 1. Try fetching active Supabase session
     let session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null = null;
     try {

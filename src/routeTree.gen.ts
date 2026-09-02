@@ -11,25 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiSyncAttendanceRouteImport } from './routes/api/sync-attendance'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAiStatusRouteImport } from './routes/api/ai-status'
-import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminStudentsRouteImport } from './routes/admin/students'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
-import { Route as AdminSecurityRouteImport } from './routes/admin/security'
-import { Route as AdminRolesRouteImport } from './routes/admin/roles'
-import { Route as AdminReportsRouteImport } from './routes/admin/reports'
-import { Route as AdminLiveActivityRouteImport } from './routes/admin/live-activity'
-import { Route as AdminAuditLogsRouteImport } from './routes/admin/audit-logs'
-import { Route as AdminAnnouncementsRouteImport } from './routes/admin/announcements'
-import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
-import { Route as AdminAcademicMonitoringRouteImport } from './routes/admin/academic-monitoring'
 import { Route as AuthenticatedPaperSimplifierRouteImport } from './routes/_authenticated/paper-simplifier'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as AuthenticatedAppStudentsRouteImport } from './routes/_authenticated/app.students'
@@ -60,11 +47,6 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -73,11 +55,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/callback',
@@ -98,61 +75,6 @@ const ApiAiStatusRoute = ApiAiStatusRouteImport.update({
   id: '/api/ai-status',
   path: '/api/ai-status',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminStudentsRoute = AdminStudentsRouteImport.update({
-  id: '/students',
-  path: '/students',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSecurityRoute = AdminSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminReportsRoute = AdminReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminLiveActivityRoute = AdminLiveActivityRouteImport.update({
-  id: '/live-activity',
-  path: '/live-activity',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
-  id: '/audit-logs',
-  path: '/audit-logs',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
-  id: '/announcements',
-  path: '/announcements',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminAcademicMonitoringRoute = AdminAcademicMonitoringRouteImport.update({
-  id: '/academic-monitoring',
-  path: '/academic-monitoring',
-  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AuthenticatedPaperSimplifierRoute =
   AuthenticatedPaperSimplifierRouteImport.update({
@@ -268,26 +190,13 @@ const AuthenticatedAppThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/paper-simplifier': typeof AuthenticatedPaperSimplifierRoute
-  '/admin/academic-monitoring': typeof AdminAcademicMonitoringRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/announcements': typeof AdminAnnouncementsRoute
-  '/admin/audit-logs': typeof AdminAuditLogsRoute
-  '/admin/live-activity': typeof AdminLiveActivityRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/roles': typeof AdminRolesRoute
-  '/admin/security': typeof AdminSecurityRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/students': typeof AdminStudentsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
@@ -312,22 +221,10 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/paper-simplifier': typeof AuthenticatedPaperSimplifierRoute
-  '/admin/academic-monitoring': typeof AdminAcademicMonitoringRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/announcements': typeof AdminAnnouncementsRoute
-  '/admin/audit-logs': typeof AdminAuditLogsRoute
-  '/admin/live-activity': typeof AdminLiveActivityRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/roles': typeof AdminRolesRoute
-  '/admin/security': typeof AdminSecurityRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/students': typeof AdminStudentsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/admin': typeof AdminIndexRoute
   '/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
@@ -351,26 +248,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/paper-simplifier': typeof AuthenticatedPaperSimplifierRoute
-  '/admin/academic-monitoring': typeof AdminAcademicMonitoringRoute
-  '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/announcements': typeof AdminAnnouncementsRoute
-  '/admin/audit-logs': typeof AdminAuditLogsRoute
-  '/admin/live-activity': typeof AdminLiveActivityRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/roles': typeof AdminRolesRoute
-  '/admin/security': typeof AdminSecurityRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/students': typeof AdminStudentsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/api/ai-status': typeof ApiAiStatusRoute
   '/api/chat': typeof ApiChatRoute
   '/api/sync-attendance': typeof ApiSyncAttendanceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/admin/': typeof AdminIndexRoute
   '/_authenticated/app/$threadId': typeof AuthenticatedAppThreadIdRoute
   '/_authenticated/app/ai-assistant': typeof AuthenticatedAppAiAssistantRoute
   '/_authenticated/app/announcements': typeof AuthenticatedAppAnnouncementsRoute
@@ -394,26 +278,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/auth'
     | '/sitemap.xml'
     | '/paper-simplifier'
-    | '/admin/academic-monitoring'
-    | '/admin/analytics'
-    | '/admin/announcements'
-    | '/admin/audit-logs'
-    | '/admin/live-activity'
-    | '/admin/reports'
-    | '/admin/roles'
-    | '/admin/security'
-    | '/admin/settings'
-    | '/admin/students'
-    | '/admin/users'
     | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
-    | '/admin/'
     | '/app/$threadId'
     | '/app/ai-assistant'
     | '/app/announcements'
@@ -438,22 +309,10 @@ export interface FileRouteTypes {
     | '/auth'
     | '/sitemap.xml'
     | '/paper-simplifier'
-    | '/admin/academic-monitoring'
-    | '/admin/analytics'
-    | '/admin/announcements'
-    | '/admin/audit-logs'
-    | '/admin/live-activity'
-    | '/admin/reports'
-    | '/admin/roles'
-    | '/admin/security'
-    | '/admin/settings'
-    | '/admin/students'
-    | '/admin/users'
     | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
-    | '/admin'
     | '/app/$threadId'
     | '/app/ai-assistant'
     | '/app/announcements'
@@ -476,26 +335,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/admin'
     | '/auth'
     | '/sitemap.xml'
     | '/_authenticated/paper-simplifier'
-    | '/admin/academic-monitoring'
-    | '/admin/analytics'
-    | '/admin/announcements'
-    | '/admin/audit-logs'
-    | '/admin/live-activity'
-    | '/admin/reports'
-    | '/admin/roles'
-    | '/admin/security'
-    | '/admin/settings'
-    | '/admin/students'
-    | '/admin/users'
     | '/api/ai-status'
     | '/api/chat'
     | '/api/sync-attendance'
     | '/auth/callback'
-    | '/admin/'
     | '/_authenticated/app/$threadId'
     | '/_authenticated/app/ai-assistant'
     | '/_authenticated/app/announcements'
@@ -519,7 +365,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiAiStatusRoute: typeof ApiAiStatusRoute
@@ -543,13 +388,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -563,13 +401,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
     }
     '/auth/callback': {
       id: '/auth/callback'
@@ -598,83 +429,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/ai-status'
       preLoaderRoute: typeof ApiAiStatusRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/students': {
-      id: '/admin/students'
-      path: '/students'
-      fullPath: '/admin/students'
-      preLoaderRoute: typeof AdminStudentsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/security': {
-      id: '/admin/security'
-      path: '/security'
-      fullPath: '/admin/security'
-      preLoaderRoute: typeof AdminSecurityRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/roles': {
-      id: '/admin/roles'
-      path: '/roles'
-      fullPath: '/admin/roles'
-      preLoaderRoute: typeof AdminRolesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/reports': {
-      id: '/admin/reports'
-      path: '/reports'
-      fullPath: '/admin/reports'
-      preLoaderRoute: typeof AdminReportsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/live-activity': {
-      id: '/admin/live-activity'
-      path: '/live-activity'
-      fullPath: '/admin/live-activity'
-      preLoaderRoute: typeof AdminLiveActivityRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/audit-logs': {
-      id: '/admin/audit-logs'
-      path: '/audit-logs'
-      fullPath: '/admin/audit-logs'
-      preLoaderRoute: typeof AdminAuditLogsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/announcements': {
-      id: '/admin/announcements'
-      path: '/announcements'
-      fullPath: '/admin/announcements'
-      preLoaderRoute: typeof AdminAnnouncementsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/analytics': {
-      id: '/admin/analytics'
-      path: '/analytics'
-      fullPath: '/admin/analytics'
-      preLoaderRoute: typeof AdminAnalyticsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/academic-monitoring': {
-      id: '/admin/academic-monitoring'
-      path: '/academic-monitoring'
-      fullPath: '/admin/academic-monitoring'
-      preLoaderRoute: typeof AdminAcademicMonitoringRouteImport
-      parentRoute: typeof AdminRouteRoute
     }
     '/_authenticated/paper-simplifier': {
       id: '/_authenticated/paper-simplifier'
@@ -859,40 +613,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface AdminRouteRouteChildren {
-  AdminAcademicMonitoringRoute: typeof AdminAcademicMonitoringRoute
-  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
-  AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
-  AdminAuditLogsRoute: typeof AdminAuditLogsRoute
-  AdminLiveActivityRoute: typeof AdminLiveActivityRoute
-  AdminReportsRoute: typeof AdminReportsRoute
-  AdminRolesRoute: typeof AdminRolesRoute
-  AdminSecurityRoute: typeof AdminSecurityRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminStudentsRoute: typeof AdminStudentsRoute
-  AdminUsersRoute: typeof AdminUsersRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-}
-
-const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-  AdminAcademicMonitoringRoute: AdminAcademicMonitoringRoute,
-  AdminAnalyticsRoute: AdminAnalyticsRoute,
-  AdminAnnouncementsRoute: AdminAnnouncementsRoute,
-  AdminAuditLogsRoute: AdminAuditLogsRoute,
-  AdminLiveActivityRoute: AdminLiveActivityRoute,
-  AdminReportsRoute: AdminReportsRoute,
-  AdminRolesRoute: AdminRolesRoute,
-  AdminSecurityRoute: AdminSecurityRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
-  AdminStudentsRoute: AdminStudentsRoute,
-  AdminUsersRoute: AdminUsersRoute,
-  AdminIndexRoute: AdminIndexRoute,
-}
-
-const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-  AdminRouteRouteChildren,
-)
-
 interface AuthRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -906,7 +626,6 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiAiStatusRoute: ApiAiStatusRoute,

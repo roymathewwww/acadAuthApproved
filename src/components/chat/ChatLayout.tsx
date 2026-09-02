@@ -11,9 +11,8 @@ import {
   Plus, MessageSquare, Trash2, LogOut, Menu,
   LayoutDashboard, BookOpen, Calendar, FileText,
   LineChart, CheckCircle2, Bell, Sparkles,
-  User, Settings, Code, Volume2, CalendarDays,
-  Users, Sun, Moon, X, Activity, GraduationCap,
-  UserCog, Shield, Radio, Megaphone, TrendingUp, ScrollText, Lock, FileOutput,
+  User, Code, Volume2, CalendarDays,
+  Users, Sun, Moon, X, Activity, GraduationCap, FileOutput,
   Wand2, ChevronLeft, ChevronRight, Layers, Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,7 +47,6 @@ export function ChatLayout({
   const userRole = typeof window !== "undefined"
     ? (localStorage.getItem("demo_user_role") || "student")
     : "student";
-  const isAdmin = userRole === "admin";
 
   const [sessionUser, setSessionUser] = useState<{ name: string; email: string; avatar: string } | null>(null);
 
@@ -57,7 +55,7 @@ export function ChatLayout({
       if (session?.user) {
         const u = session.user;
         const meta = u.user_metadata || {};
-        const name = meta.full_name || meta.name || u.email?.split("@")[0] || (isAdmin ? "Administrator" : "Student");
+        const name = meta.full_name || meta.name || u.email?.split("@")[0] || "Student";
         const email = u.email || "";
         const avatar = meta.avatar_url || meta.picture || "";
 
@@ -71,11 +69,11 @@ export function ChatLayout({
         }
       }
     });
-  }, [isAdmin]);
+  }, []);
 
   const userName = sessionUser?.name || (typeof window !== "undefined"
-    ? (localStorage.getItem("demo_user_name") || (isAdmin ? "Administrator" : "Christ Student"))
-    : (isAdmin ? "Administrator" : "Christ Student"));
+    ? (localStorage.getItem("demo_user_name") || "Christ Student")
+    : "Christ Student");
   const userEmail = sessionUser?.email || (typeof window !== "undefined"
     ? (localStorage.getItem("demo_user_email") || "")
     : "");
@@ -161,20 +159,6 @@ export function ChatLayout({
     { label: "Profile",         to: "/app/profile",        icon: User },
   ];
 
-  // Administrator navigation items
-  const adminNavItems = [
-    { label: "Command Center",   to: "/admin",             icon: LayoutDashboard },
-    { label: "Student SIS",      to: "/admin/students",    icon: GraduationCap },
-    { label: "Live Activity",    to: "/admin/live-activity", icon: Radio },
-    { label: "Analytics",        to: "/admin/analytics",   icon: TrendingUp },
-    { label: "Announcements",    to: "/admin/announcements", icon: Megaphone },
-    { label: "Reports",          to: "/admin/reports",     icon: FileText },
-    { label: "User Roles",       to: "/admin/users",       icon: UserCog },
-    { label: "Audit Logs",       to: "/admin/audit-logs",  icon: ScrollText },
-    { label: "Security",         to: "/admin/security",    icon: Lock },
-    { label: "Settings",         to: "/admin/settings",    icon: Settings },
-  ];
-
   // Class Leader (CR) — every student module plus one extra: Class Management.
   const classLeaderNavItems = [
     ...studentNavItems,
@@ -191,9 +175,7 @@ export function ChatLayout({
   const isTeacher = userRole === "teacher";
   const isClassLeader = userRole === "class_leader";
 
-  const navItems = isAdmin
-    ? adminNavItems
-    : isTeacher
+  const navItems = isTeacher
     ? teacherNavItems
     : isClassLeader
     ? classLeaderNavItems
@@ -236,7 +218,7 @@ export function ChatLayout({
             className="pointer-events-none absolute -left-8 -top-10 h-32 w-32 rounded-full bg-brand-red opacity-30 blur-3xl"
             aria-hidden
           />
-          <Link to={isAdmin ? "/admin" : "/app"} className="relative flex items-center min-w-0 z-10">
+          <Link to="/app" className="relative flex items-center min-w-0 z-10">
             {!collapsed ? (
               <span ref={wordmarkRef} className="flex flex-col leading-none select-none">
                 <span
@@ -266,7 +248,7 @@ export function ChatLayout({
         <div className="flex-1 overflow-y-auto py-4 px-2.5 space-y-1 scrollbar-none">
           {!collapsed && (
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground px-3 mb-2 font-medium">
-              {isAdmin ? "Navigation" : "Modules"}
+              Modules
             </p>
           )}
 
@@ -370,25 +352,13 @@ export function ChatLayout({
               </span>
               <span className="text-border">/</span>
               <span className="font-medium text-foreground tracking-tight">
-                {isAdmin ? "Enterprise Command Center" : "AcadSphere Academic Space"}
+                AcadSphere Academic Space
               </span>
             </div>
           </div>
 
           {/* Right Actions & Profile */}
           <div className="flex items-center gap-2.5">
-            {isAdmin && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => navigate({ to: "/admin/students" })}
-                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-xl bg-brand-red text-brand-red-foreground text-xs font-semibold shadow-sm shadow-brand-red/30 hover:opacity-90 transition-opacity"
-              >
-                <GraduationCap className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Manage SIS</span>
-              </motion.button>
-            )}
-
             {/* Profile Dropdown */}
             <div className="relative">
               <motion.button
@@ -425,24 +395,13 @@ export function ChatLayout({
                       </div>
 
                       <Link
-                        to={isAdmin ? "/admin" : "/app/profile"}
+                        to="/app/profile"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                       >
                         <User className="h-3.5 w-3.5" />
-                        {isAdmin ? "Admin Center" : "Profile & Credentials"}
+                        Profile & Credentials
                       </Link>
-
-                      {isAdmin && (
-                        <Link
-                          to="/admin/settings"
-                          onClick={() => setShowProfileMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                          Preferences & Integrations
-                        </Link>
-                      )}
 
                       <div className="border-t border-border mt-1 pt-1">
                         <button
