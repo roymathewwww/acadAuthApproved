@@ -17,6 +17,21 @@ export const Route = createFileRoute("/_authenticated/app/class-management")({
   component: ClassManagementPage,
 });
 
+// Default starting timetable for 4 MCA-B (Batch 2026, M.Sc DS, Karnataka
+// Batch) — shown pre-filled only while the section has nothing saved yet, so
+// the class monitor lands on the real schedule instead of a blank grid and
+// just needs to hit Save once to persist it. Subject names must match the
+// section's synced subject_name values exactly (case included) so they land
+// on the right dropdown option and match correctly on the Attendance page.
+const DEFAULT_TIMETABLE: Record<string, string[]> = {
+  Monday:    ["CLOUD COMPUTING", "MACHINE LEARNING", "THEORY OF COMPUTATION", "DATA ENGINEERING", "Library"],
+  Tuesday:   ["DATA ENGINEERING", "MACHINE LEARNING", "SPECIALIZATION PROJECT", "CLOUD COMPUTING", ""],
+  Wednesday: ["THEORY OF COMPUTATION", "SPECIALIZATION PROJECT", "DATA ENGINEERING", "Library", ""],
+  Thursday:  ["MACHINE LEARNING", "CLOUD COMPUTING", "DATA ENGINEERING", "THEORY OF COMPUTATION", ""],
+  Friday:    ["THEORY OF COMPUTATION", "DATA ENGINEERING", "CLOUD COMPUTING", "MACHINE LEARNING", ""],
+  Saturday:  ["SPECIALIZATION PROJECT", "Library", "Library", "DATA ENGINEERING", ""],
+};
+
 function ClassManagementPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"timetable" | "roster" | "classroom">("timetable");
@@ -41,14 +56,17 @@ function ClassManagementPage() {
     queryFn: () => getSubjectsFn(),
   });
 
-  // The dropdown lists ONLY the section's real synced subjects — nothing
-  // else. Older free-text cells ("CC(NS)", "ML LAB(...)", etc.) won't match
-  // any option and show as unselected until re-saved from this dropdown;
-  // that's intentional, not a bug — see the note on the info banner below.
-  const subjectOptions = useMemo(
-    () => [...sectionSubjects].sort((a, b) => a.localeCompare(b)),
-    [sectionSubjects]
-  );
+  // The dropdown lists the section's real synced subjects, plus "Library" as
+  // the one fixed non-subject option (a scheduled slot, just not an
+  // attendance-tracked one — the Attendance page's calculator already
+  // excludes it). Older free-text cells ("CC(NS)", "ML LAB(...)", etc.) won't
+  // match any option and show as unselected until re-saved from this
+  // dropdown; that's intentional, not a bug — see the info banner below.
+  const subjectOptions = useMemo(() => {
+    const set = new Set(sectionSubjects);
+    set.add("Library");
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [sectionSubjects]);
 
   // Cells saved before the dropdown existed (free-typed "CC(NS)" style text)
   // won't match any option — flag them so the CR knows to re-pick and re-save.
@@ -60,16 +78,30 @@ function ClassManagementPage() {
   // Grid state: cellText[day][slotIndex] — edited in place, saved as a batch.
   const [grid, setGrid] = useState<Record<string, string[]> | null>(null);
 
+  // Nothing saved for this section yet → start from the default timetable
+  // instead of a blank grid. The moment any row exists in Supabase, that
+  // real data takes over and the default is never consulted again. Default
+  // subject names are matched case-insensitively against the section's real
+  // synced subjects so they still land on a valid dropdown option even if
+  // the live casing differs slightly from what's hardcoded below.
   const savedGrid = useMemo(() => {
     const g: Record<string, string[]> = {};
-    for (const d of DAYS_OF_WEEK) g[d] = TIME_SLOTS.map(() => "");
+    const startFromDefault = savedTimetable.length === 0;
+    const bySubjectLower = new Map(sectionSubjects.map((s) => [s.toLowerCase(), s]));
+    for (const d of DAYS_OF_WEEK) {
+      g[d] = startFromDefault
+        ? (DEFAULT_TIMETABLE[d] ?? TIME_SLOTS.map(() => "")).map(
+            (name) => bySubjectLower.get(name.toLowerCase()) ?? name
+          )
+        : TIME_SLOTS.map(() => "");
+    }
     for (const r of savedTimetable) {
       if (g[r.dayOfWeek] && r.periodNumber >= 0 && r.periodNumber < TIME_SLOTS.length) {
         g[r.dayOfWeek][r.periodNumber] = r.subjectName;
       }
     }
     return g;
-  }, [savedTimetable]);
+  }, [savedTimetable, sectionSubjects]);
 
   const activeGrid = grid ?? savedGrid;
   const setCell = (day: string, slotIndex: number, value: string) => {
@@ -149,6 +181,12 @@ function ClassManagementPage() {
                   {saveMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
                 </Button>
               </div>
+
+              {!ttLoading && savedTimetable.length === 0 && (
+                <div className="rounded-xl border border-brand-red/25 bg-brand-red/10 px-3.5 py-2.5 text-[11px] text-brand-red">
+                  Nothing's saved for your section yet, so this grid is pre-filled with the default 4 MCA-B timetable — review it and hit Save to make it official. Any edit before saving overwrites the default, not real data.
+                </div>
+              )}
 
               {!ttLoading && sectionSubjects.length === 0 && (
                 <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2.5 text-[11px] text-amber-700 dark:text-amber-400">
