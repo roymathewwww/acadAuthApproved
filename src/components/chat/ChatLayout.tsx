@@ -222,8 +222,7 @@ export function ChatLayout({
             {!collapsed ? (
               <span ref={wordmarkRef} className="flex flex-col leading-none select-none">
                 <span
-                  className="font-wordmark-script text-brand-gold text-[2.25rem] md:text-[2.75rem] leading-none -rotate-6 origin-bottom-left pl-1"
-                  style={{ textShadow: "0 2px 14px color-mix(in srgb, var(--brand-gold) 35%, transparent)" }}
+                  className="font-wordmark-script text-foreground text-[2.25rem] md:text-[2.75rem] leading-none -rotate-6 origin-bottom-left pl-1"
                 >
                   Acad
                 </span>
