@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { generateText } from "ai";
-import { getAiModel, getAiModelWithCustomKey } from "./ai-gateway.server";
+import { getAiModel, getAiModelWithCustomKey, getFallbackModel } from "./ai-gateway.server";
 import { renderResumePdf } from "./resume-pdf.server";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -208,15 +208,13 @@ export const analyzeResume = createServerFn({ method: "POST" })
       const response = await generateText({
         model,
         prompt,
-        maxOutputTokens: 1200,
+        maxOutputTokens: 2000,
+        providerOptions: { groq: { reasoningEffort: "low" } },
       });
 
-      let text = response.text.trim();
-      if (text.startsWith("```")) {
-        text = text.replace(/^```(?:json)?/im, "").replace(/```$/m, "").trim();
-      }
-
-      const analysis = JSON.parse(text);
+      const jsonText = extractJsonObject(response.text);
+      if (!jsonText) throw new Error("Model returned no parseable JSON object");
+      const analysis = JSON.parse(jsonText);
       return {
         text: resumeText,
         analysis
@@ -246,12 +244,53 @@ export const analyzeResume = createServerFn({ method: "POST" })
 // 8941" means. Capping maxOutputTokens here, plus a generous safety
 // truncation on the two free-text inputs, keeps every real request under
 // that ceiling instead of only working for suspiciously short resumes/JDs.
-const MAX_TAILOR_OUTPUT_TOKENS = 2200;
+// Budget: the tailoring prompt runs ~2,000 tokens (instructions + a 1-page
+// resume + a typical JD), so ~5,000 output tokens still lands under the 8K
+// ceiling while leaving room for BOTH the model's reasoning tokens and a
+// complete resume JSON. The earlier 2,200 was too tight: gpt-oss-120b is a
+// reasoning model, its reasoning is billed as output, and when the budget ran
+// out mid-answer the JSON came back truncated — which is what surfaced as
+// "AI tailoring returned an unexpected format".
+const MAX_TAILOR_OUTPUT_TOKENS = 5000;
 const MAX_INPUT_CHARS = 6000; // ~1,500 tokens — far more than a 1-page resume or a real JD needs
 
 function clampInputText(text: string, label: string): string {
   if (text.length <= MAX_INPUT_CHARS) return text;
   return `${text.slice(0, MAX_INPUT_CHARS)}\n[${label} truncated for length — tailor from what's above.]`;
+}
+
+/**
+ * Pulls the JSON object out of a model reply. A reasoning model's text can
+ * arrive fenced, wrapped in <think> blocks, or prefixed with analysis prose
+ * depending on the provider's reasoning format — none of which survive a bare
+ * JSON.parse of the whole string. So instead of trusting the entire reply,
+ * find the outermost balanced { ... }, ignoring braces inside JSON strings.
+ * Returns null when there's no complete object (i.e. the reply was cut off).
+ */
+function extractJsonObject(raw: string): string | null {
+  let text = (raw || "").trim();
+
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?/im, "").replace(/```\s*$/m, "").trim();
+  }
+
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\") { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) return text.slice(start, i + 1);
+  }
+  return null; // unbalanced — the model's reply was truncated mid-JSON
 }
 
 export const tailorResume = createServerFn({ method: "POST" })
@@ -335,29 +374,67 @@ RETURN ONLY A VALID JSON OBJECT WITH THIS EXACT SCHEMA (no markdown fences, no p
   "certifications": ["", ""]
 }`;
 
-    let response: Awaited<ReturnType<typeof generateText>>;
+    // One attempt against a given model: generate, dig the JSON object out of
+    // whatever wrapper the model put around it, and parse. Returns null (rather
+    // than throwing) for "the model replied but it wasn't usable JSON", so the
+    // caller can try the other provider before giving up on the user.
+    async function attempt(m: any, label: string): Promise<any | null> {
+      const response = await generateText({
+        model: m,
+        prompt,
+        maxOutputTokens: MAX_TAILOR_OUTPUT_TOKENS,
+        // gpt-oss-120b reasons before answering and those tokens come out of
+        // the same output budget — keep it minimal so the budget goes to the
+        // actual resume JSON.
+        providerOptions: { groq: { reasoningEffort: "low" } },
+      });
+
+      const jsonText = extractJsonObject(response.text);
+      if (!jsonText) {
+        console.error(
+          `[tailorResume] ${label} returned no complete JSON (finishReason=${response.finishReason}):`,
+          (response.text || "").slice(0, 800),
+        );
+        return null;
+      }
+      try {
+        return JSON.parse(jsonText);
+      } catch {
+        console.error(`[tailorResume] ${label} returned malformed JSON:`, jsonText.slice(0, 800));
+        return null;
+      }
+    }
+
+    let primaryError: string | null = null;
     try {
-      response = await generateText({ model, prompt, maxOutputTokens: MAX_TAILOR_OUTPUT_TOKENS });
+      const result = await attempt(model, "primary");
+      if (result) return result;
     } catch (err: any) {
-      const msg = String(err?.message || err);
-      console.error("[tailorResume] AI provider call failed:", msg);
-      if (/too large|tokens per minute|rate.?limit|429/i.test(msg)) {
+      primaryError = String(err?.message || err);
+      console.error("[tailorResume] primary provider call failed:", primaryError);
+      if (/too large|tokens per minute|rate.?limit|429/i.test(primaryError)) {
         throw new Error("Your resume and job description are too long for the AI to process right now. Try pasting a shorter job description (just the requirements/responsibilities) and try again.");
       }
-      throw new Error(`AI tailoring failed: ${msg}`);
     }
 
-    let text = response.text.trim();
-    if (text.startsWith("```")) {
-      text = text.replace(/^```(?:json)?/im, "").replace(/```$/m, "").trim();
+    // Primary either errored or produced something unparseable — try the other
+    // provider once (separate rate-limit pool, not a reasoning model) before
+    // reporting failure.
+    const fallback = getFallbackModel();
+    if (fallback) {
+      try {
+        const result = await attempt(fallback, "fallback");
+        if (result) return result;
+      } catch (err: any) {
+        console.error("[tailorResume] fallback provider call failed:", err?.message || err);
+      }
     }
 
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      console.error("[tailorResume] Model did not return valid JSON:", text.slice(0, 500));
-      throw new Error("AI tailoring returned an unexpected format. Please try again.");
-    }
+    throw new Error(
+      primaryError
+        ? `AI tailoring failed: ${primaryError}`
+        : "The AI returned an incomplete resume. Please try again — if it keeps happening, shorten the job description.",
+    );
   });
 
 const RenderPdfInputSchema = z.object({

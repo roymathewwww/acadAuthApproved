@@ -83,6 +83,55 @@ export function getAiModel(modelName: string = "openai/gpt-oss-120b") {
 }
 
 /**
+ * Returns a model from a DIFFERENT provider than the Groq primary, for use as
+ * a second attempt when the primary returns something unusable. Gemini/OpenAI
+ * sit on their own rate-limit pools and aren't reasoning models, so they don't
+ * share Groq's 8K-TPM ceiling or its habit of wrapping answers in reasoning
+ * text — which makes them a genuine fallback rather than a retry of the same
+ * failure. Returns null when no second provider is configured.
+ */
+export function getFallbackModel() {
+  let geminiKey = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY)?.trim();
+  if (!geminiKey || geminiKey.includes("${") || geminiKey.startsWith('"') || geminiKey.startsWith("'")) {
+    geminiKey = geminiKey?.replace(/['"]/g, "").trim();
+    if (!geminiKey || geminiKey.includes("${")) {
+      const gp1 = (process.env.GEMINI_P1 || process.env.VITE_GEMINI_P1)?.replace(/['"]/g, "").trim() || "";
+      const gp2 = (process.env.GEMINI_P2 || process.env.VITE_GEMINI_P2)?.replace(/['"]/g, "").trim() || "";
+      if (gp1 && gp2) geminiKey = `${gp1}${gp2}`;
+    }
+  }
+
+  if (geminiKey && !geminiKey.includes("your_") && geminiKey.length > 15) {
+    try {
+      const provider = createOpenAICompatible({
+        name: "gemini",
+        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        apiKey: geminiKey,
+      });
+      return provider("gemini-1.5-flash");
+    } catch (e) {
+      console.warn("[ai-gateway] Gemini fallback init warning:", e);
+    }
+  }
+
+  const openaiKey = process.env.OPENAI_API_KEY?.replace(/['"]/g, "").trim();
+  if (openaiKey && !openaiKey.includes("your_") && openaiKey.length > 15) {
+    try {
+      const provider = createOpenAICompatible({
+        name: "openai",
+        baseURL: "https://api.openai.com/v1",
+        apiKey: openaiKey,
+      });
+      return provider("gpt-4o-mini");
+    } catch (e) {
+      console.warn("[ai-gateway] OpenAI fallback init warning:", e);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Returns a model using a user-supplied custom key.
  * Falls back to getAiModel() if no custom key is provided.
  */
