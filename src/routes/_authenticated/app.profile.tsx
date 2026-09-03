@@ -13,7 +13,7 @@ import { getAnalyticsSummary, updateProfile } from "@/lib/analytics.functions";
 import { deriveDepartment } from "@/lib/derive-department";
 import { toast } from "sonner";
 import {
-  Edit3, Check, Loader2, Building2, Mail, LogOut, Phone, MessageCircle,
+  Edit3, Check, Loader2, Building2, Mail, LogOut, MessageCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -69,8 +69,7 @@ function ProfilePage() {
     });
   }, []);
 
-  // ── SMS reminder settings (moved here from the old Settings page) ────────
-  const [phoneNumber, setPhoneNumber] = useState("");
+  // ── Reminder-email settings (moved here from the old Settings page) ──────
   const [smsEnabled, setSmsEnabled] = useState(true);
   const [phoneSaving, setPhoneSaving] = useState(false);
   const [phoneSaved, setPhoneSaved] = useState(false);
@@ -82,36 +81,36 @@ function ProfilePage() {
         if (!user) return;
         const { data } = await supabase
           .from("profiles")
-          .select("phone_number, sms_notifications_enabled")
+          .select("sms_notifications_enabled")
           .eq("id", user.id)
           .single();
-        if (data) {
-          setPhoneNumber(data.phone_number || "");
-          setSmsEnabled(data.sms_notifications_enabled ?? true);
-        }
+        if (data) setSmsEnabled(data.sms_notifications_enabled ?? true);
       } catch (_) {}
     })();
   }, []);
 
+  // Reminders now go to the signed-in email address, so there's nothing to
+  // collect here beyond the on/off preference. sms_notifications_enabled is
+  // reused as the general notifications flag rather than migrating the column.
   const handleSavePhone = async () => {
-    if (!phoneNumber.trim()) {
-      toast.error("Please enter a valid phone number.");
-      return;
-    }
     setPhoneSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
       const { error } = await supabase
         .from("profiles")
-        .update({ phone_number: phoneNumber.trim(), sms_notifications_enabled: smsEnabled })
+        .update({ sms_notifications_enabled: smsEnabled })
         .eq("id", user.id);
       if (error) throw error;
       setPhoneSaved(true);
-      toast.success("Phone number saved! You'll receive SMS reminders for upcoming assignments.");
+      toast.success(
+        smsEnabled
+          ? "Saved — you'll get reminder emails before each deadline."
+          : "Saved — reminder emails are turned off.",
+      );
       setTimeout(() => setPhoneSaved(false), 3000);
     } catch (e: any) {
-      toast.error(`Failed to save phone number: ${e.message}`);
+      toast.error(`Failed to save preference: ${e.message}`);
     } finally {
       setPhoneSaving(false);
     }
@@ -297,35 +296,29 @@ function ProfilePage() {
                   <div className="h-6 w-6 rounded-lg border border-border bg-muted flex items-center justify-center text-foreground">
                     <MessageCircle className="h-3.5 w-3.5" />
                   </div>
-                  SMS Assignment Reminders
+                  Assignment Reminder Emails
                 </CardTitle>
-                <CardDescription className="text-[10px]">Get SMS alerts at 24h, 6h, and 1h before deadlines — even when the app is closed.</CardDescription>
+                <CardDescription className="text-[10px]">Get emailed 12h, 6h, and 1h before a deadline — even when the app is closed.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Enable SMS Reminders</p>
-                    <p className="text-[10px] text-muted-foreground">Receive automated SMS for pre-due and overdue assignments</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground">Enable reminder emails</p>
+                    <p className="text-[10px] text-muted-foreground">Automated alerts for pending and overdue submissions</p>
                   </div>
                   <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
                 </div>
                 {smsEnabled && (
                   <div className="space-y-2">
-                    <Label htmlFor="phone-number" className="text-xs font-semibold">
-                      <span className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> Mobile Number (with country code)</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="phone-number" type="tel" placeholder="e.g. +919876543210"
-                        value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="h-8 text-xs font-mono flex-1"
-                      />
-                      <Button onClick={handleSavePhone} disabled={phoneSaving} className="h-8 text-xs px-4 font-semibold">
-                        {phoneSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : phoneSaved ? <><Check className="h-3 w-3 mr-1" /> Saved!</> : "Save"}
-                      </Button>
+                    <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-[11px] font-mono text-foreground truncate">{displayEmail || "your account email"}</span>
                     </div>
+                    <Button onClick={handleSavePhone} disabled={phoneSaving} className="h-8 text-xs px-4 font-semibold w-full sm:w-auto">
+                      {phoneSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : phoneSaved ? <><Check className="h-3 w-3 mr-1" /> Saved!</> : "Save preference"}
+                    </Button>
                     <p className="text-[10px] text-muted-foreground">
-                      You'll get SMS: 24h before, 6h before, 1h before, and daily overdue alerts (up to 14 days). Sync Classroom after saving to activate reminders.
+                      Reminders go to the address you signed in with — 12h before, 6h before, 1h before, plus a daily nudge while a submission stays overdue (up to 14 days). Sync Classroom after saving to activate them.
                     </p>
                   </div>
                 )}

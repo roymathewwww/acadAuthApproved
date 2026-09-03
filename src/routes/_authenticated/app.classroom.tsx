@@ -8,6 +8,7 @@ import {
   type SubmissionItem,
   type ClassroomResponse,
 } from "@/lib/classroom.functions";
+import { sendClassroomDigestEmail } from "@/lib/notifications.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -27,7 +28,7 @@ import {
   Info,
   Calendar,
   X,
-  MessageSquare,
+  Mail,
   Send,
   Wifi,
   FileCheck,
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/_authenticated/app/classroom")({
 function ClassroomPage() {
   const fetchSubmissionsFn = useServerFn(getClassroomSubmissions);
   const fetchCachedTasksFn = useServerFn(getCachedClassroomTasks);
+  const sendDigestFn = useServerFn(sendClassroomDigestEmail);
   const queryClient = useQueryClient();
 
   /* — UI State — */
@@ -173,52 +175,23 @@ function ClassroomPage() {
     }
   };
 
+  // Sends the current coursework snapshot to the address the student signed in
+  // with (replaces the old Twilio/Fast2SMS demo path — no phone number needed).
   const handleDemoSms = async () => {
     setIsSendingDemoSms(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      let phone: string | undefined;
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone_number")
-          .eq("id", user.id)
-          .single();
-        phone = profile?.phone_number || undefined;
-      }
-
-      const userName = user?.user_metadata?.full_name?.split(" ")[0]
-        || user?.email?.split("@")[0]
-        || "Student";
-
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-demo-sms`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
+      const { sentTo } = await sendDigestFn({
+        data: {
           pending: counts.pending,
           overdue: counts.overdue,
           completed: counts.completed,
           total: counts.total,
           courses: counts.courses,
-          phone,
-          userName,
-        }),
+        },
       });
-
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Demo SMS alert sent to phone!");
-      } else {
-        toast.error("SMS notification failed: " + (result.error || "Unknown error"));
-      }
+      toast.success(`Email alert sent to ${sentTo}`);
     } catch (err: any) {
-      toast.error("Failed to send Demo SMS: " + err.message);
+      toast.error("Email alert failed: " + (err?.message || "Unknown error"));
     } finally {
       setIsSendingDemoSms(false);
     }
@@ -393,17 +366,18 @@ function ClassroomPage() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.96 }}
-              id="demo-sms-btn"
+              id="demo-email-btn"
               onClick={handleDemoSms}
               disabled={isSendingDemoSms}
+              title="Email this coursework snapshot to your signed-in address"
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-brand-red text-brand-red-foreground text-xs font-semibold hover:opacity-90 shadow-sm shadow-brand-red/20 transition-[opacity,box-shadow] disabled:opacity-70"
             >
               {isSendingDemoSms ? (
                 <Send className="h-3.5 w-3.5 animate-bounce" />
               ) : (
-                <MessageSquare className="h-3.5 w-3.5" />
+                <Mail className="h-3.5 w-3.5" />
               )}
-              <span>{isSendingDemoSms ? "Sending..." : "SMS Alert"}</span>
+              <span>{isSendingDemoSms ? "Sending..." : "Email Alert"}</span>
             </motion.button>
 
             {!isConnected && (
